@@ -8,8 +8,8 @@ from django.utils.encoding import force_unicode, smart_str
 
 class ThumbnailFieldFile(ImageFieldFile):
 
-    def __init__(self, key, renderer, *args, **kwargs):
-        self.key = key
+    def __init__(self, attname, renderer, *args, **kwargs):
+        self.attname = attname
         self.renderer = renderer
         super(ThumbnailFieldFile, self).__init__(*args, **kwargs)
         self.storage = self.field.thumbnails_storage
@@ -21,30 +21,31 @@ class ThumbnailFieldFile(ImageFieldFile):
 class Thumbnails(object):
 
     def __init__(self, field_file):
-        self._thumbnail_keys = set()
+        self._thumbnail_attnames = set()
 
         field = field_file.field
         instance = field_file.instance
 
         for options in field.thumbnails:
             try:
-                key, renderer, filename = options
+                attname, renderer, key = options
             except ValueError:
-                key, renderer = options
-                filename = os.path.basename(field_file.name)
+                attname, renderer = options
+                key = attname
             ext = '.%s' % renderer.format
+            filename = os.path.basename(field_file.name)
             name = field.generate_thumbnail_filename(instance=instance,
                                                      filename=filename,
                                                      key=key,
                                                      ext=ext)
-            thumbnail = ThumbnailFieldFile(key, renderer, instance,
+            thumbnail = ThumbnailFieldFile(attname, renderer, instance,
                                            field, name)
-            self._thumbnail_keys.add(key)
-            setattr(self, key, thumbnail)
+            self._thumbnail_attnames.add(attname)
+            setattr(self, attname, thumbnail)
 
     def __iter__(self):
-        for key, value in self.__dict__.iteritems():
-            if key in self._thumbnail_keys:
+        for attname, value in self.__dict__.iteritems():
+            if attname in self._thumbnail_attnames:
                 yield value
 
 
