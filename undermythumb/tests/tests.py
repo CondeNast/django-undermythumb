@@ -67,6 +67,17 @@ class AutoThumbsTestCase(TestCase):
         img = ImageFile(content)
         self.assertEqual((img.width, img.height), (50, 10))
 
+    def test_resize_renderer_upscaling(self):
+        renderer = ResizeRenderer(500, 500, upscale=False)
+        content = renderer.generate(self._get_image())
+        img = ImageFile(content)
+        self.assertEqual((img.width, img.height), (100, 100))
+
+        renderer = ResizeRenderer(500, 500, upscale=True)
+        content = renderer.generate(self._get_image())
+        img = ImageFile(content)
+        self.assertEqual((img.width, img.height), (500, 500))
+
     def test_letterbox_renderer(self):
         # TODO: needs a better test. this only checks that
         # the image is the correct size, and not that it's
