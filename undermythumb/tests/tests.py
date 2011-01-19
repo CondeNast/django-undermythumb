@@ -10,7 +10,8 @@ from django.test import TestCase
 from PIL import Image
 
 from undermythumb.fields import ImageWithThumbnailsField
-from undermythumb.renderers import BaseRenderer, CropRenderer, ResizeRenderer
+from undermythumb.renderers import BaseRenderer, CropRenderer, \
+     ResizeRenderer, LetterboxRenderer
 from undermythumb.tests.models import Car, Book, Author
 
 
@@ -56,7 +57,7 @@ class AutoThumbsTestCase(TestCase):
         self.assertEqual((img.width, img.height), (50, 10))
 
     def test_resize_renderer(self):
-        renderer = ResizeRenderer(50, 10)
+        renderer = ResizeRenderer(50, 10, upscale=True)
         content = renderer.generate(self._get_image())
         img = ImageFile(content)
         self.assertEqual((img.width, img.height), (50, 50))
@@ -65,6 +66,18 @@ class AutoThumbsTestCase(TestCase):
         content = renderer.generate(self._get_image())
         img = ImageFile(content)
         self.assertEqual((img.width, img.height), (50, 10))
+
+    def test_letterbox_renderer(self):
+        # TODO: needs a better test. this only checks that
+        # the image is the correct size, and not that it's
+        # been letterboxed properly. A proper letterboxing
+        # test would check the border around each side.
+        
+        renderer = LetterboxRenderer(500, 500, bg_color='#000000',
+                                     quality=100, upscale=False)
+        content = renderer.generate(self._get_image())
+        img = ImageFile(content)
+        self.assertEqual((img.width, img.height), (500, 500))
 
     def test_on_static_upload_to(self):
         scion = Car.objects.create(image=self._get_image('scion.jpg'))

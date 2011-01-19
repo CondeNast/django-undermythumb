@@ -3,7 +3,10 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+import struct
+
 from django.core.files.base import ContentFile
+
 from PIL import Image, ImageOps
 
 
@@ -73,23 +76,67 @@ class CropRenderer(BaseRenderer):
 
 class ResizeRenderer(BaseRenderer):
     """
-    Renders a image resized to the width and height you provide. The
-    image will maintain its aspect ratio unless `constrain` is `False`.
-
+    Renders an image resized to the width and height you provide.
+    The image will maintain its aspect ratio unless ``constrain``
+    is ``False``. If desired dimensions are 
     """
-    def __init__(self, width, height, constrain=True, *args, **kwargs):
+
+    def __init__(self, width, height, constrain=True, upscale=False,
+                 *args, **kwargs):
         self.width = width
         self.height = height
         self.constrain = constrain
+        self.upscale = upscale
         super(ResizeRenderer, self).__init__(*args, **kwargs)
 
     def _render(self, image):
         dw, dh = self.width, self.height
+        sw, sh = image.size
+        
         if self.constrain:
-            sw, sh = image.size
             sr = float(sw) / float(sh)
             if sw > sh:
                 dh = dw / sr
             else:
                 dh = dw * sr
-        return image.resize((int(dw), int(dh)), Image.ANTIALIAS)
+
+        # resize if the source dimensions are smaller than the desired,
+        # or the user has requested upscaling
+        if (((dw > sw) or (dh > sh)) and self.upscale) or \
+               ((dw < sw) or (dh < sh)):
+            image = image.resize((int(dw), int(dh)), Image.ANTIALIAS)
+
+        return image
+
+
+class LetterboxRenderer(ResizeRenderer):
+    """
+    Letterboxes an image smaller than a requested size by
+    centering it on a larger canvas. Canvas optionally uses
+    a hex background color, defaulting to ``#FFFFFF``.
+    """
+    
+    def __init__(self, width, height, bg_color='#FFFFFF',
+                 *args, **kwargs):
+        super(LetterboxRenderer, self).__init__(width,
+                                                height,
+                                                *args,
+                                                **kwargs)
+        # convert hex string to rgba quadruple
+        bg_color = bg_color.strip('#')
+        bg_hex = bg_color.decode('hex')
+        self.bg_color = struct.unpack('BBB', bg_hex) + (0, )
+
+    def _render(self, image):
+        image = super(LetterboxRenderer, self)._render(image)
+        src_w, src_h = image.size
+
+        # place image on canvas and save
+        canvas = Image.new('RGBA',
+                           (self.width, self.height),
+                           self.bg_color)
+        paste_x = (self.width - src_w) / 2
+        paste_y = (self.height - src_h) / 2
+        canvas.paste(image, (paste_x, paste_y))
+        
+        return canvas
