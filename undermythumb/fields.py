@@ -91,3 +91,14 @@ class ImageWithThumbnailsField(ImageField):
         dirname = self.get_thumbnail_directory_name()
         filename = self.get_thumbnail_filename(filename, key, ext)
         return os.path.join(dirname, filename)
+
+    def south_field_triple(self):
+        """Return a description of this field for South.
+        """
+        from south.modelsinspector import introspector
+
+        field_class = "django.db.models.fields.files.ImageField"
+        args, kwargs = introspector(self)
+        return (field_class, args, kwargs)
+
+
