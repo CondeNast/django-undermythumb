@@ -1,6 +1,7 @@
 import datetime
 import os
 
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import signals
 from django.db.models.fields.files import ImageField, ImageFieldFile
 from django.utils.encoding import force_unicode, smart_str
@@ -15,48 +16,67 @@ class ThumbnailFieldFile(ImageFieldFile):
         self.storage = self.field.thumbnails_storage
 
     def save(self):
-        assert False, "Can save this."
+        raise NotImplemented("Can't save thumbnails directly.")
 
 
 class Thumbnails(object):
 
     def __init__(self, field_file):
-        self._thumbnail_attnames = set()
+        self.file = field_file
+        self.field = self.file.field
+        self.instance = self.file.instance
 
-        field = field_file.field
-        instance = field_file.instance
+        self._cache = {}
+        self._populate()
 
-        for options in field.thumbnails:
-            try:
-                attname, renderer, key = options
-            except ValueError:
-                attname, renderer = options
-                key = attname
-            ext = '.%s' % renderer.format
-            filename = os.path.basename(field_file.name)
-            name = field.generate_thumbnail_filename(instance=instance,
-                                                     filename=filename,
-                                                     key=key,
-                                                     ext=ext)
-            thumbnail = ThumbnailFieldFile(attname, renderer, instance,
-                                           field, name)
-            self._thumbnail_attnames.add(attname)
-            setattr(self, attname, thumbnail)
+    def _populate(self):
+        if not self._cache and self.file.name:
+            for options in self.field.thumbnails:
+                try:
+                    attname, renderer, key = options
+                except ValueError:
+                    attname, renderer = options
+                    key = attname
+                ext = '.%s' % renderer.format
+                name = self.field.generate_thumbnail_filename(
+                    instance=self.instance,
+                    original=self.file,
+                    key=key,
+                    ext=ext,
+                )
+                thumbnail = ThumbnailFieldFile(
+                    attname,
+                    renderer,
+                    self.instance,
+                    self.field,
+                    name,
+                )
+                self._cache[attname] = thumbnail
+
+    def clear_cache(self):
+        self._cache = {}
+
+    def __getattr__(self, name):
+        try:
+            return self._cache[name]
+        except KeyError:
+            return object.__getattr__(self, name)
 
     def __iter__(self):
-        for attname, value in self.__dict__.iteritems():
-            if attname in self._thumbnail_attnames:
-                yield value
+        self._populate()
+        for attname, value in self._cache.iteritems():
+            yield value
 
 
 class ImageWithThumbnailsFieldFile(ImageFieldFile):
 
     def __init__(self, *args, **kwargs):
         super(ImageWithThumbnailsFieldFile, self).__init__(*args, **kwargs)
-        setattr(self, 'thumbnails', Thumbnails(self))
+        self.thumbnails = Thumbnails(self)
 
     def save(self, name, content, save=True):
         super(ImageWithThumbnailsFieldFile, self).save(name, content, save)
+        self.thumbnails.clear_cache()
 
         for thumbnail in self.thumbnails:
             rendered = thumbnail.renderer.generate(content)
@@ -70,24 +90,13 @@ class ImageWithThumbnailsField(ImageField):
             thumbnails_storage=None, *args, **kwargs):
         super(ImageWithThumbnailsField, self).__init__(*args, **kwargs)
         self.thumbnails = thumbnails or []
+
         self.thumbnails_storage = thumbnails_storage or self.storage
-        self.thumbnails_upload_to = thumbnails_upload_to or self.upload_to
+        self.thumbnails_upload_to = thumbnails_upload_to
 
         if callable(self.thumbnails_upload_to):
             self.generate_thumbnail_filename = self.thumbnails_upload_to
 
-    def get_thumbnail_directory_name(self):
-        now = datetime.datetime.now()
-        dirname = smart_str(self.thumbnails_upload_to)
-        dirpath = force_unicode(now.strftime(dirname))
-        return os.path.normpath(dirpath)
-
-    def get_thumbnail_filename(self, filename, key, ext):
-        basename, _ext = os.path.splitext(filename)
-        name = self.thumbnails_storage.get_valid_name(basename)
-        return '%s-%s%s' % (name, key, ext)
-
-    def generate_thumbnail_filename(self, instance, filename, key, ext):
-        dirname = self.get_thumbnail_directory_name()
-        filename = self.get_thumbnail_filename(filename, key, ext)
-        return os.path.join(dirname, filename)
+    def generate_thumbnail_filename(self, instance, original, key, ext):
+        base, _ext = os.path.splitext(force_unicode(original))
+        return '%s-%s%s' % (base, key, ext)

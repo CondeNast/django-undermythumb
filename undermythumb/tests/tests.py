@@ -66,39 +66,6 @@ class AutoThumbsTestCase(TestCase):
         img = ImageFile(content)
         self.assertEqual((img.width, img.height), (50, 10))
 
-    def test_on_static_upload_to(self):
-        scion = Car.objects.create(image=self._get_image('scion.jpg'))
-
-        self.assertEqual((scion.image.width, scion.image.height), (100, 100))
-        self.assertEqual(scion.image.name,
-                         os.path.join('original', 'scion.jpg'))
-
-        self.assertEqual((scion.image.thumbnails.small.width,
-                          scion.image.thumbnails.small.height), (25, 25))
-        self.assertEqual(scion.image.thumbnails.small,
-                         os.path.join('thumbs', 'scion-small.jpg'))
-
-        self.assertEqual((scion.image.thumbnails.medium.width,
-                          scion.image.thumbnails.medium.height), (50, 50))
-        self.assertEqual(scion.image.thumbnails.medium,
-                         os.path.join('thumbs', 'scion-medium.jpg'))
-
-        self.assertEqual((scion.image.thumbnails.large.width,
-                          scion.image.thumbnails.large.height), (75, 75))
-        self.assertEqual(scion.image.thumbnails.large,
-                         os.path.join('thumbs', 'scion-large.jpg'))
-
-        matrix = Car.objects.create(image=self._get_image('matrix.jpg'))
-
-        self.assertEqual(matrix.image.name,
-                         os.path.join('original', 'matrix.jpg'))
-
-        self.assertEqual(matrix.image.thumbnails.small.name,
-                         os.path.join('thumbs', 'matrix-small.jpg'))
-
-        self.assertEqual(matrix.image.thumbnails.medium,
-                         os.path.join('thumbs', 'matrix-medium.jpg'))
-
     def test_on_func_upload(self):
         book1_uuid = unicode(uuid.uuid4())
         book1 = Book(name=book1_uuid, image=self._get_image('book1.jpg'))
@@ -137,3 +104,14 @@ class AutoThumbsTestCase(TestCase):
         self.assertTrue(settings.TEST_MEDIA_ROOT in author1.image.path)
         self.assertTrue(settings.TEST_MEDIA_CUSTOM_ROOT in
             author1.image.thumbnails.small.path)
+
+    def test_thumbnails_update_on_save(self):
+        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
+        self.assertEquals(author1.image, 'authors/author1.jpg')
+        self.assertEquals(author1.image.thumbnails.small,
+                          'authors/author1-small.png')
+        author1.image = self._get_image('author1-1.jpg')
+        author1.save()
+        self.assertEquals(author1.image, 'authors/author1-1.jpg')
+        self.assertEquals(author1.image.thumbnails.small,
+                          'authors/author1-1-small.png')
