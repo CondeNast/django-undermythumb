@@ -12,7 +12,6 @@ class Car(models.Model):
     image = ImageWithThumbnailsField(
         upload_to='original',
         storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
-        thumbnails_upload_to='thumbs',
         thumbnails=(
             ('small', CropRenderer(25, 25)),
             ('medium', CropRenderer(50, 50)),
@@ -26,7 +25,7 @@ def original_upload_to(instance, filename):
     return os.path.join(instance.name, 'original%s' % ext)
 
 
-def thumbnails_upload_to(instance, filename, key, ext):
+def thumbnails_upload_to(instance, original, key, ext):
     return os.path.join(instance.name, '%s%s' % (key, ext))
 
 
