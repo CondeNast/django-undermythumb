@@ -100,3 +100,12 @@ class ImageWithThumbnailsField(ImageField):
     def generate_thumbnail_filename(self, instance, original, key, ext):
         base, _ext = os.path.splitext(force_unicode(original))
         return '%s-%s%s' % (base, key, ext)
+
+    def south_field_triple(self):
+        """Return a description of this field for South.
+        """
+        from south.modelsinspector import introspector
+
+        field_class = "django.db.models.fields.files.ImageField"
+        args, kwargs = introspector(self)
+        return (field_class, args, kwargs)
