@@ -4,7 +4,8 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.db import models
 
-from undermythumb.fields import ImageWithThumbnailsField
+from undermythumb.fields import ImageWithThumbnailsField, \
+     ThumbnailOverrideField
 from undermythumb.renderers import CropRenderer
 
 
@@ -55,3 +56,5 @@ class Author(models.Model):
             ('large', CropRenderer(75, 75)),
         ),
     )
+    small_image = ThumbnailOverrideField('image', 'small',
+                                         upload_to=thumbnails_upload_to)
