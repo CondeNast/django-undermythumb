@@ -161,3 +161,18 @@ class AutoThumbsTestCase(TestCase):
         self.assertTrue(settings.TEST_MEDIA_ROOT in author1.image.path)
         self.assertTrue(settings.TEST_MEDIA_CUSTOM_ROOT in
             author1.image.thumbnails.small.path)
+
+    def test_thumbnail_override_empty(self):
+        """Ensure that an empty override field uses the proper thumbnail.
+        """
+        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
+        self.assertEqual(author1.small_image.url,
+                         author1.image.thumbnails.small.url)
+
+    def test_thumbnail_override_image(self):
+        """Ensure that an overridden thumbnail returns the custom image.
+        """
+        author1 = Author.objects.create(image=self._get_image('author1.jpg'),
+                                        small_image=self._get_image(''))
+        self.assertEqual(author1.small_image.url,
+                         author1.image.thumbnails.small.url)

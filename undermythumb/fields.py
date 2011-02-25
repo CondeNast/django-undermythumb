@@ -2,7 +2,8 @@ import datetime
 import os
 
 from django.db.models import signals
-from django.db.models.fields.files import ImageField, ImageFieldFile
+from django.db.models.fields.files import ImageField, ImageFieldFile, \
+     ImageFileDescriptor
 from django.utils.encoding import force_unicode, smart_str
 
 
@@ -15,7 +16,7 @@ class ThumbnailFieldFile(ImageFieldFile):
         self.storage = self.field.thumbnails_storage
 
     def save(self):
-        assert False, "Can save this."
+        assert False, "Can't save this."
 
 
 class Thumbnails(object):
@@ -102,3 +103,38 @@ class ImageWithThumbnailsField(ImageField):
         return (field_class, args, kwargs)
 
 
+class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
+
+    def __get__(self, instance, owner):        
+        # if this particular field is empty, return the url
+        # of the mirror field's thumbnail
+        mirror_field = self.field.mirror_field
+        thumbnail_name = self.field.thumbnail_name
+
+        current_value = instance.__dict__.get(self.field.name)
+        if current_value:
+            return current_value
+
+        mirror_attr = getattr(instance, mirror_field)
+        thumbnail = getattr(mirror_attr.thumbnails, thumbnail_name)
+        return thumbnail
+
+
+class ThumbnailOverrideField(ImageField):
+    """Provides a field for explicitly overriding thumbnails.
+    """
+    descriptor_class = ThumbnailOverrideFieldDescriptor
+
+    def __init__(self, mirror_field, thumbnail_name, *args, **kwargs):
+        kwargs.update(blank=True, null=True)
+        super(ThumbnailOverrideField, self).__init__(*args, **kwargs)
+        self.mirror_field = mirror_field
+        self.thumbnail_name = thumbnail_name
+
+    def south_field_triple(self):
+        from south.modelinspector import introspector
+
+        field_class = 'django.db.models.fields.files.ImageField'
+        args, kwargs = introspector(self)
+        return (field_class, args, kwargs)
+    
