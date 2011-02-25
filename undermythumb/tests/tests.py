@@ -129,6 +129,17 @@ class AutoThumbsTestCase(TestCase):
         self.assertTrue(settings.TEST_MEDIA_CUSTOM_ROOT in
             author1.image.thumbnails.small.path)
 
+    def test_thumbnails_update_on_save(self):
+        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
+        self.assertEquals(author1.image, 'authors/author1.jpg')
+        self.assertEquals(author1.image.thumbnails.small,
+                          'authors/author1-small.png')
+        author1.image = self._get_image('author1-1.jpg')
+        author1.save()
+        self.assertEquals(author1.image, 'authors/author1-1.jpg')
+        self.assertEquals(author1.image.thumbnails.small,
+                          'authors/author1-1-small.png')
+
     def test_thumbnail_override_empty(self):
         """Ensure that an empty override field uses the proper thumbnail.
         """
@@ -143,15 +154,3 @@ class AutoThumbsTestCase(TestCase):
                                         small_image=self._get_image('author1_alt.jpg'))
         self.assertNotEqual(author1.small_image.url,
                             author1.image.thumbnails.small.url)
-
-    def test_thumbnails_update_on_save(self):
-        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
-        self.assertEquals(author1.image, 'authors/author1.jpg')
-        self.assertEquals(author1.image.thumbnails.small,
-                          'authors/author1-small.png')
-        author1.image = self._get_image('author1-1.jpg')
-        author1.save()
-        self.assertEquals(author1.image, 'authors/author1-1.jpg')
-        self.assertEquals(author1.image.thumbnails.small,
-                          'authors/author1-1-small.png')
-
