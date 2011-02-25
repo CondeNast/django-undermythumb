@@ -173,6 +173,6 @@ class AutoThumbsTestCase(TestCase):
         """Ensure that an overridden thumbnail returns the custom image.
         """
         author1 = Author.objects.create(image=self._get_image('author1.jpg'),
-                                        small_image=self._get_image(''))
-        self.assertEqual(author1.small_image.url,
-                         author1.image.thumbnails.small.url)
+                                        small_image=self._get_image('author1_alt.jpg'))
+        self.assertNotEqual(author1.small_image.url,
+                            author1.image.thumbnails.small.url)
