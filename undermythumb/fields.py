@@ -111,9 +111,10 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
         mirror_field = self.field.mirror_field
         thumbnail_name = self.field.thumbnail_name
 
-        current_value = instance.__dict__.get(self.field.name)
-        if current_value:
-            return current_value
+        value = super(ThumbnailOverrideFieldDescriptor, self).__get__(instance, owner)
+        
+        if value:
+            return value
 
         mirror_attr = getattr(instance, mirror_field)
         thumbnail = getattr(mirror_attr.thumbnails, thumbnail_name)

@@ -56,5 +56,6 @@ class Author(models.Model):
             ('large', CropRenderer(75, 75)),
         ),
     )
-    small_image = ThumbnailOverrideField('image', 'small',
-                                         upload_to=thumbnails_upload_to)
+    small_image = ThumbnailOverrideField(mirror_field='image',
+                                         thumbnail_name='small',
+                                         upload_to='authors')
