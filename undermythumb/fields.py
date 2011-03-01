@@ -61,7 +61,7 @@ class Thumbnails(object):
         try:
             return self._cache[name]
         except KeyError:
-            return object.__getattr__(self, name)
+            return None
 
     def __iter__(self):
         self._populate()
