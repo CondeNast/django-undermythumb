@@ -152,14 +152,31 @@ class AutoThumbsTestCase(TestCase):
     def test_thumbnail_mirroring(self):
         """Ensure that an empty override field uses the proper thumbnail.
         """
-        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
-        self.assertEqual(author1.small_image.url,
-                         author1.image.thumbnails.small.url)
-
+        author = Author.objects.create(image=self._get_image('author1.jpg'))
+        self.assertEqual(author.small_image.url,
+                         author.image.thumbnails.small.url)
+        
     def test_thumbnail_override_image(self):
-        """Ensure that an overridden thumbnail returns the custom image.
+        """Ensure that an overridden thumbnail returns the custom image
+        at the right url.
         """
-        author1 = Author.objects.create(image=self._get_image('author1.jpg'),
-                                        small_image=self._get_image('author1_alt.jpg'))
-        self.assertNotEqual(author1.small_image.url,
-                            author1.image.thumbnails.small.url)
+
+        # create an author, override thumbnail
+        author = Author.objects.create(image=self._get_image('author.jpg'),
+                                       small_image=self._get_image('author_alt.jpg'))
+
+        # quick check 
+        self.assertNotEqual(author.small_image.url,
+                            author.image.thumbnails.small.url)
+
+        # check auto-generated thumbnail url
+        self.assertEqual(author.image.thumbnails.small.url,
+                         'authors/author-small.png')
+
+        # check override thumbnail url
+        self.assertEqual(author.small_image.url,
+                         'authors/author_alt.jpg')
+
+        os.remove(author.image.path)
+        os.remove(author.small_image.path)
+        
