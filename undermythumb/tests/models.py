@@ -46,7 +46,7 @@ class Book(models.Model):
 
 class Author(models.Model):
     image = ImageWithThumbnailsField(
-        upload_to='authors',
+        upload_to='authors/',
         storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
         thumbnails_storage=FileSystemStorage(settings.TEST_MEDIA_CUSTOM_ROOT),
         thumbnails=(
@@ -57,4 +57,4 @@ class Author(models.Model):
     )
     small_image = ThumbnailOverrideField(mirror_field='image',
                                          thumbnail_name='small',
-                                         upload_to='authors')
+                                         upload_to='authors/')

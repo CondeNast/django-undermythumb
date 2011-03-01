@@ -114,7 +114,11 @@ class ImageWithThumbnailsField(ImageField):
 
 class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
 
-    def __get__(self, instance, owner):        
+    def __get__(self, instance, owner):
+        """Returns either the custom thumbnail provided directly
+        to this field, or the thumbnail from the mirror field.
+        """
+        
         # if this particular field is empty, return the url
         # of the mirror field's thumbnail
         mirror_field = self.field.mirror_field
@@ -132,6 +136,10 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
 
 class ThumbnailOverrideField(ImageField):
     """Provides a field for explicitly overriding thumbnails.
+
+    Images passed into this field won't be resized,
+    but will be renamed to match the particular thumbnail
+    size they override.
     """
     descriptor_class = ThumbnailOverrideFieldDescriptor
 
@@ -142,8 +150,10 @@ class ThumbnailOverrideField(ImageField):
         self.thumbnail_name = thumbnail_name
 
     def south_field_triple(self):
-        from south.modelinspector import introspector
+        """Return a description of this field for South.
+        """
+        from south.modelsinspector import introspector
 
-        field_class = 'django.db.models.fields.files.ImageField'
+        field_class = "django.db.models.fields.files.ImageField"
         args, kwargs = introspector(self)
         return (field_class, args, kwargs)
