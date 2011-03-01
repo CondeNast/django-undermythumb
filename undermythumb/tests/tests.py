@@ -140,7 +140,16 @@ class AutoThumbsTestCase(TestCase):
         self.assertEquals(author1.image.thumbnails.small,
                           'authors/author1-1-small.png')
 
-    def test_thumbnail_override_empty(self):
+    def test_thumbnail_override_no_source(self):
+        """Ensure that an override field correctly mirrors an empty source.
+        """
+        author = Author.objects.create()
+        self.assertEqual(author.image.thumbnails.small, None)
+        self.assertEqual(author.small_image, None)
+        self.assertEqual(author.image.thumbnails.small,
+                         author.small_image)
+
+    def test_thumbnail_mirroring(self):
         """Ensure that an empty override field uses the proper thumbnail.
         """
         author1 = Author.objects.create(image=self._get_image('author1.jpg'))
