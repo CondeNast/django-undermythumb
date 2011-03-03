@@ -126,12 +126,18 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
 
         value = super(ThumbnailOverrideFieldDescriptor, self).__get__(instance, owner)
 
-        if value:
+        # monkey-patch the thumbnail image field file
+        # to note whether or not this is a mirrored value or
+        # a value given to this field
+        if type(value) == ImageFieldFile and hasattr(value, 'url'):
+            value._empty = False
             return value
 
+        # this field has no value, and is mirroring another field's thumbnail
         mirror_attr = getattr(instance, mirror_field)
-        thumbnail = getattr(mirror_attr.thumbnails, thumbnail_name)
-        return thumbnail
+        value = getattr(mirror_attr.thumbnails, thumbnail_name)
+        value._empty = True        
+        return value
 
 
 class ThumbnailOverrideField(ImageField):
@@ -148,6 +154,11 @@ class ThumbnailOverrideField(ImageField):
         super(ThumbnailOverrideField, self).__init__(*args, **kwargs)
         self.mirror_field = mirror_field
         self.thumbnail_name = thumbnail_name
+
+    def get_db_prep_value(self, value):
+        if value._empty:
+            return None
+        return value
 
     def south_field_triple(self):
         """Return a description of this field for South.
