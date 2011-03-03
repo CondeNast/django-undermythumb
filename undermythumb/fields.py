@@ -118,14 +118,14 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
         """Returns either the custom thumbnail provided directly
         to this field, or the thumbnail from the mirror field.
         """
-        
+
         # if this particular field is empty, return the url
         # of the mirror field's thumbnail
         mirror_field = self.field.mirror_field
         thumbnail_name = self.field.thumbnail_name
 
         value = super(ThumbnailOverrideFieldDescriptor, self).__get__(instance, owner)
-        
+
         if value:
             return value
 
