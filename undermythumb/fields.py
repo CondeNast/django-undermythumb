@@ -121,9 +121,6 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
 
         # if this particular field is empty, return the url
         # of the mirror field's thumbnail
-        mirror_field = self.field.mirror_field
-        thumbnail_name = self.field.thumbnail_name
-
         value = super(ThumbnailOverrideFieldDescriptor, self).__get__(instance, owner)
 
         # monkey-patch the thumbnail image field file
@@ -133,10 +130,20 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
             value._empty = False
             return value
 
-        # this field has no value, and is mirroring another field's thumbnail
-        mirror_attr = getattr(instance, mirror_field)
-        value = getattr(mirror_attr.thumbnails, thumbnail_name)
-        value._empty = True        
+        # this field has no value, and is mirroring another field's thumbnail        
+        path_bits = self.field.thumbnail_path.split('.')
+        value = instance
+        
+        while path_bits:
+            bit = path_bits.pop(0)
+            value = getattr(value, bit, None)
+            if value is None:
+                return None
+            
+        # mirror_attr = getattr(instance, mirror_field)
+        # value = getattr(mirror_attr.thumbnails, thumbnail_name)
+        if value is not None:
+            value._empty = True      
         return value
 
 
@@ -149,16 +156,16 @@ class ThumbnailOverrideField(ImageField):
     """
     descriptor_class = ThumbnailOverrideFieldDescriptor
 
-    def __init__(self, mirror_field, thumbnail_name, *args, **kwargs):
+    def __init__(self, thumbnail_path, *args, **kwargs):
         kwargs.update(blank=True, null=True)
         super(ThumbnailOverrideField, self).__init__(*args, **kwargs)
-        self.mirror_field = mirror_field
-        self.thumbnail_name = thumbnail_name
+        self.thumbnail_path = thumbnail_path
 
     def get_db_prep_value(self, value):
-        if value._empty:
+        if value is None or \
+               (hasattr(value, '_empty') and value._empty is None):
             return None
-        return value
+        return unicode(value)
 
     def south_field_triple(self):
         """Return a description of this field for South.
