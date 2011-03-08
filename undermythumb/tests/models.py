@@ -30,20 +30,6 @@ def thumbnails_upload_to(instance, original, key, ext):
     return os.path.join(instance.name, '%s%s' % (key, ext))
 
 
-class Book(models.Model):
-    name = models.CharField(max_length=32)
-    image = ImageWithThumbnailsField(
-        upload_to=original_upload_to,
-        storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
-        thumbnails_upload_to=thumbnails_upload_to,
-        thumbnails=(
-            ('small', CropRenderer(25, 25)),
-            ('medium', CropRenderer(50, 50)),
-            ('large', CropRenderer(75, 75)),
-        ),
-    )
-
-
 class Author(models.Model):
     image = ImageWithThumbnailsField(
         upload_to='authors/',
@@ -55,6 +41,23 @@ class Author(models.Model):
             ('large', CropRenderer(75, 75)),
         ),
     )
-    small_image = ThumbnailOverrideField(mirror_field='image',
-                                         thumbnail_name='small',
+    small_image = ThumbnailOverrideField('image.thumbnails.small',
                                          upload_to='authors/')
+
+
+class Book(models.Model):
+    author = models.ForeignKey(Author, null=True)
+    name = models.CharField(max_length=32)
+    author_image = ThumbnailOverrideField('author.image.thumbnails.small',
+                                          upload_to='authors/',
+                                          null=True)
+    image = ImageWithThumbnailsField(
+        upload_to=original_upload_to,
+        storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
+        thumbnails_upload_to=thumbnails_upload_to,
+        thumbnails=(
+            ('small', CropRenderer(25, 25)),
+            ('medium', CropRenderer(50, 50)),
+            ('large', CropRenderer(75, 75)),
+        ),
+    )

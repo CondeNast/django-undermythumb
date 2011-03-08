@@ -156,9 +156,15 @@ class AutoThumbsTestCase(TestCase):
         self.assertEqual(author.small_image.url,
                          author.image.thumbnails.small.url)
 
-    def test_thumbnail_no_db_value(self):
+    def test_thumbnail_mirroring_foreign_fields(self):
+        """Ensure that fallback paths work across non-m2m relationships.
+        """
         author = Author.objects.create(image=self._get_image('author.jpg'))
-        self.assertEqual(author.small_image.url, None)
+        book = Book.objects.create(author=author,
+                                   image=self._get_image('book.jpg'))
+
+        self.assertEqual(book.author_image.url,
+                         author.image.thumbnails.small.url)
         
     def test_thumbnail_override_image(self):
         """Ensure that an overridden thumbnail returns the custom image
