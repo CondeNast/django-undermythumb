@@ -139,11 +139,8 @@ class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
             value = getattr(value, bit, None)
             if value is None:
                 return None
-            
-        # mirror_attr = getattr(instance, mirror_field)
-        # value = getattr(mirror_attr.thumbnails, thumbnail_name)
-        if value is not None:
-            value._empty = True      
+
+        value._empty = True      
         return value
 
 
