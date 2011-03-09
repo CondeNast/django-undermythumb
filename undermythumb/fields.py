@@ -69,6 +69,49 @@ class Thumbnails(object):
             yield value
 
 
+class FallbackFieldDescriptor(ImageFileDescriptor):
+
+    def __get__(self, instance, owner):
+        """Returns either the custom thumbnail provided directly
+        to this field, or the thumbnail from the mirror field.
+        """
+
+        # if this particular field is empty, return the url
+        # of the mirror field's thumbnail
+        value = super(FallbackFieldDescriptor, self).__get__(instance,
+                                                             owner)
+
+        # monkey-patch the thumbnail image field file
+        # to note whether or not this is a mirrored value or
+        # a value given to this field
+        if type(value) in (ImageFieldFile,
+                           ThumbnailFieldFile,
+                           ImageWithThumbnailsFieldFile) \
+               and hasattr(value, 'url'):
+            value._empty = False
+            return value
+
+        # this field has no value, and is mirroring
+        # another field's thumbnail
+        if self.field.fallback_path is None and not bool(value):
+            value._empty = True
+            return value
+
+        fallback_path = self.field.fallback_path
+        path_bits = fallback_path.split('.')
+        mirror_value = instance
+
+        while path_bits:
+            bit = path_bits.pop(0)
+            mirror_value = getattr(mirror_value, bit, None)
+
+        if mirror_value is None:
+            return None
+
+        mirror_value._empty = True      
+        return mirror_value
+
+
 class ImageWithThumbnailsFieldFile(ImageFieldFile):
 
     def __init__(self, *args, **kwargs):
@@ -86,9 +129,10 @@ class ImageWithThumbnailsFieldFile(ImageFieldFile):
 
 class ImageWithThumbnailsField(ImageField):
     attr_class = ImageWithThumbnailsFieldFile
+    descriptor_class = FallbackFieldDescriptor
 
     def __init__(self, thumbnails=None, thumbnails_upload_to=None,
-            thumbnails_storage=None, *args, **kwargs):
+            thumbnails_storage=None, fallback_path=None, *args, **kwargs):
         super(ImageWithThumbnailsField, self).__init__(*args, **kwargs)
         self.thumbnails = thumbnails or []
 
@@ -97,6 +141,9 @@ class ImageWithThumbnailsField(ImageField):
 
         if callable(self.thumbnails_upload_to):
             self.generate_thumbnail_filename = self.thumbnails_upload_to
+
+        # fallback field
+        self.fallback_path = fallback_path
 
     def generate_thumbnail_filename(self, instance, original, key, ext):
         base, _ext = os.path.splitext(force_unicode(original))
@@ -112,51 +159,19 @@ class ImageWithThumbnailsField(ImageField):
         return (field_class, args, kwargs)
 
 
-class ThumbnailOverrideFieldDescriptor(ImageFileDescriptor):
+class ImageFallbackField(ImageField):
+    """A special ImageField that allows a user to optionally override
+    a particular ImageWithThumbnailsField thumbnail, or transparently
+    fall back to another thumbnail if no image is supplied.
 
-    def __get__(self, instance, owner):
-        """Returns either the custom thumbnail provided directly
-        to this field, or the thumbnail from the mirror field.
-        """
-
-        # if this particular field is empty, return the url
-        # of the mirror field's thumbnail
-        value = super(ThumbnailOverrideFieldDescriptor, self).__get__(instance, owner)
-
-        # monkey-patch the thumbnail image field file
-        # to note whether or not this is a mirrored value or
-        # a value given to this field
-        if type(value) == ImageFieldFile and hasattr(value, 'url'):
-            value._empty = False
-            return value
-
-        # this field has no value, and is mirroring another field's thumbnail        
-        path_bits = self.field.thumbnail_path.split('.')
-        value = instance
-        
-        while path_bits:
-            bit = path_bits.pop(0)
-            value = getattr(value, bit, None)
-            if value is None:
-                return None
-
-        value._empty = True      
-        return value
-
-
-class ThumbnailOverrideField(ImageField):
-    """Provides a field for explicitly overriding thumbnails.
-
-    Images passed into this field won't be resized,
-    but will be renamed to match the particular thumbnail
-    size they override.
+    No special transformations are applied to uploaded images.
     """
-    descriptor_class = ThumbnailOverrideFieldDescriptor
+    descriptor_class = FallbackFieldDescriptor
 
-    def __init__(self, thumbnail_path, *args, **kwargs):
+    def __init__(self, fallback_path, *args, **kwargs):
         kwargs.update(blank=True, null=True)
-        super(ThumbnailOverrideField, self).__init__(*args, **kwargs)
-        self.thumbnail_path = thumbnail_path
+        super(ImageFallbackField, self).__init__(*args, **kwargs)
+        self.fallback_path = fallback_path
 
     def get_db_prep_value(self, value):
         if value is None or \

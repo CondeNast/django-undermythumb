@@ -5,7 +5,7 @@ from django.core.files.storage import FileSystemStorage
 from django.db import models
 
 from undermythumb.fields import ImageWithThumbnailsField, \
-     ThumbnailOverrideField
+     ImageFallbackField
 from undermythumb.renderers import CropRenderer
 
 
@@ -33,6 +33,7 @@ def thumbnails_upload_to(instance, original, key, ext):
 class Author(models.Model):
     image = ImageWithThumbnailsField(
         upload_to='authors/',
+        blank=True, null=True,
         storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
         thumbnails_storage=FileSystemStorage(settings.TEST_MEDIA_CUSTOM_ROOT),
         thumbnails=(
@@ -41,17 +42,21 @@ class Author(models.Model):
             ('large', CropRenderer(75, 75)),
         ),
     )
-    small_image = ThumbnailOverrideField('image.thumbnails.small',
-                                         upload_to='authors/')
-
+    small_image = ImageFallbackField(fallback_path='image.thumbnails.small',
+                                     upload_to='authors/')
+    
 
 class Book(models.Model):
     author = models.ForeignKey(Author, null=True)
     name = models.CharField(max_length=32)
-    author_image = ThumbnailOverrideField('author.image.thumbnails.small',
+    author_image = ImageFallbackField('author.image',
+                                      upload_to='authors/',
+                                      null=True)
+    alt_author_image = ImageFallbackField('author_image',
                                           upload_to='authors/',
                                           null=True)
     image = ImageWithThumbnailsField(
+        blank=True, null=True,
         upload_to=original_upload_to,
         storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
         thumbnails_upload_to=thumbnails_upload_to,
@@ -61,3 +66,12 @@ class Book(models.Model):
             ('large', CropRenderer(75, 75)),
         ),
     )
+    alt_image = ImageWithThumbnailsField(blank=True,
+                                         null=True,
+                                         fallback_path='image',
+                                         upload_to='authors/',
+                                         storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
+                                         thumbnails=(('small', CropRenderer(25, 25)),
+                                                     ('medium', CropRenderer(50, 50)),
+                                                     ('large', CropRenderer(75, 75))))
+
