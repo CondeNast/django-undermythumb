@@ -140,53 +140,93 @@ class AutoThumbsTestCase(TestCase):
         self.assertEquals(author1.image.thumbnails.small,
                           'authors/author1-1-small.png')
 
-    def test_thumbnail_override_no_source(self):
-        """Ensure that an override field correctly mirrors an empty source.
+    def test_thumbnails_available_with_empty_image(self):
+        """Ensure that an empty image field still makes available
+        the thumbnails accessor.
         """
+        
         author = Author.objects.create()
-        self.assertEqual(author.image.thumbnails.small, None)
-        self.assertEqual(author.small_image, None)
-        self.assertEqual(author.image.thumbnails.small,
-                         author.small_image)
 
-    def test_thumbnail_mirroring(self):
-        """Ensure that an empty override field uses the proper thumbnail.
+        # author.image should be None
+        self.assertEqual(author.image, None)
+        self.assertEqual(author.image.thumbnails.small, None)
+
+    def test_imagefallbackfield_fallback(self):
+        """Ensure that an ImageFallbackField returns the correct fallback image.
         """
+
         author = Author.objects.create(image=self._get_image('author.jpg'))
+        book = Book.objects.create(author=author)
+
+        # check for correct image url from source field
+        self.assertEqual(author.image.url, 'authors/author.jpg')
+        self.assertNotEqual(author.small_image, None)
+
+        # assert that the "small image" url mirrors the
+        # small thumbnail from "image"
         self.assertEqual(author.small_image.url,
                          author.image.thumbnails.small.url)
 
-    def test_thumbnail_mirroring_foreign_fields(self):
-        """Ensure that fallback paths work across non-m2m relationships.
+        # assert that fallback paths work with FK relationships
+        self.assertEqual(book.author_image.url, author.image.url)
+
+    def test_imagefallbackfield_populated(self):
+        """Ensure that an ImageFallbackField doesn't ignore it's own content.
         """
+
         author = Author.objects.create(image=self._get_image('author.jpg'))
         book = Book.objects.create(author=author,
-                                   image=self._get_image('book.jpg'))
+                                   author_image=self._get_image('book_author.jpg'))
 
+        # assert that the fallback field returns 'book_author.jpg'
+        self.assertNotEqual(book.author_image.url, author.image.url)
         self.assertEqual(book.author_image.url,
-                         author.image.thumbnails.small.url)
-        
-    def test_thumbnail_override_image(self):
-        """Ensure that an overridden thumbnail returns the custom image
-        at the right url.
+                         'authors/book_author.jpg')
+
+    def test_thumbnailfield_fallback(self):
+        """Ensure that an ImageWithThumbnailsField falls back correctly.
+
+        In this test case, 'book.alt_image' should fall back to
+        'book.image' if empty.
         """
 
-        # create an author, override thumbnail
-        author = Author.objects.create(image=self._get_image('author.jpg'),
-                                       small_image=self._get_image('author_alt.jpg'))
+        book = Book.objects.create(image=self._get_image('book.jpg'))
 
-        # quick check 
-        self.assertNotEqual(author.small_image.url,
-                            author.image.thumbnails.small.url)
+        # 'book.alt_image.url' should match 'book.image.url'
+        self.assertEqual(book.alt_image.url, book.image.url)
 
-        # check auto-generated thumbnail url
-        self.assertEqual(author.image.thumbnails.small.url,
-                         'authors/author-small.png')
-
-        # check override thumbnail url
-        self.assertEqual(author.small_image.url,
-                         'authors/author_alt.jpg')
-
-        os.remove(author.image.path)
-        os.remove(author.small_image.path)
+        # 'book.alt_image.thumbnails.small.url' should match
+        # that of 'book.image...'
+        self.assertEqual(book.alt_image.thumbnails.small.url,
+                         book.image.thumbnails.small.url)
         
+    def test_thumbnailfield_populated(self):
+        """Ensure that a fallback-enabled ImageWithThumbnailsField returns it's own content.
+        """
+
+        book = Book.objects.create(name='Thinner',
+                                   image=self._get_image('book.jpg'),
+                                   alt_image=self._get_image('book_alt.jpg'))
+
+        # 'alt_image' urls should not mirror 'image' urls
+        self.assertEqual(book.alt_image.url, 'authors/book_alt.jpg')
+        self.assertNotEqual(book.image.url, book.alt_image.url)
+
+        # make sure thumbnails are properly stored, and not mirrored
+        self.assertEqual(book.alt_image.thumbnails.small.url,
+                         'authors/book_alt-small.jpg')
+        self.assertNotEqual(book.alt_image.thumbnails.small.url,
+                            book.image.thumbnails.small.url)
+
+    def test_imagefallbackfield_depth(self):
+        """Ensure that falling back will continue falling until something is hit.
+
+        In this test case, 'book.alt_author_image' should fall back
+        all the way to 'author.image'.
+        """
+
+        author = Author.objects.create(image=self._get_image('author.jpg'))
+        book = Book.objects.create(author=author)
+
+        self.assertEqual(book.alt_author_image.url,
+                         author.image.url)
