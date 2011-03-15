@@ -173,7 +173,7 @@ class ImageFallbackField(ImageField):
         super(ImageFallbackField, self).__init__(*args, **kwargs)
         self.fallback_path = fallback_path
 
-    def get_db_prep_value(self, value):
+    def get_db_prep_value(self, value, connection, prepared=False):
         if value is None or \
                (hasattr(value, '_empty') and value._empty is None):
             return None
