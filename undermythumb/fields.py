@@ -97,13 +97,24 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
             value._empty = True
             return value
 
-        fallback_path = self.field.fallback_path
+        if callable(self.field.fallback_path):
+            # call fallback path function with instance
+            fallback_path = self.field.fallback_path(instance)
+        else:
+            fallback_path = self.field.fallback_path
+        
         path_bits = fallback_path.split('.')
         mirror_value = instance
 
         while path_bits:
             bit = path_bits.pop(0)
-            mirror_value = getattr(mirror_value, bit, None)
+            try:
+                bit = int(bit)
+                mirror_value = mirror_value[bit]
+            except ValueError:
+                mirror_value = getattr(mirror_value, bit, None)
+                if callable(mirror_value):
+                    mirror_value = mirror_value()
 
         if mirror_value is None:
             return None
