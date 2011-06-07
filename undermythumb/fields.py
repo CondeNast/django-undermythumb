@@ -95,7 +95,7 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
         # this field has no value, and is mirroring
         # another field's thumbnail
         if self.field.fallback_path is None:
-            if getattr(value, 'path'):
+            if getattr(value, 'name'):
                 value._empty = False
             else:
                 value._empty = True
