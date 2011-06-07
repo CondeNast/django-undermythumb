@@ -84,17 +84,21 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
         # monkey-patch the thumbnail image field file
         # to note whether or not this is a mirrored value or
         # a value given to this field
-        if type(value) in (ImageFieldFile,
+        if (type(value) in (ImageFieldFile,
                            ThumbnailFieldFile,
-                           ImageWithThumbnailsFieldFile) \
-               and hasattr(value, 'url'):
+                           ImageWithThumbnailsFieldFile,
+                           ImageFallbackField)
+               and hasattr(value, 'url')):
             value._empty = False
             return value
 
         # this field has no value, and is mirroring
         # another field's thumbnail
-        if self.field.fallback_path is None and not bool(value):
-            value._empty = True
+        if self.field.fallback_path is None:
+            if getattr(value, 'path'):
+                value._empty = False
+            else:
+                value._empty = True
             return value
 
         if callable(self.field.fallback_path):
@@ -102,7 +106,7 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
             fallback_path = self.field.fallback_path(instance)
         else:
             fallback_path = self.field.fallback_path
-        
+
         path_bits = fallback_path.split('.')
         mirror_value = instance
 
