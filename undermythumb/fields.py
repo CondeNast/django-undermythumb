@@ -115,6 +115,9 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
             try:
                 bit = int(bit)
                 mirror_value = mirror_value[bit]
+            except IndexError:
+                mirror_value = None
+                break
             except ValueError:
                 mirror_value = getattr(mirror_value, bit, None)
                 if callable(mirror_value):
