@@ -14,13 +14,12 @@ class ThumbnailFieldFile(ImageFieldFile):
         self.attname = attname
         self.renderer = renderer
         super(ThumbnailFieldFile, self).__init__(*args, **kwargs)
-        self.storage = self.field.thumbnails_storage
 
     def save(self):
         raise NotImplemented("Can't save thumbnails directly.")
 
 
-class Thumbnails(object):
+class ThumbnailSet(object):
 
     def __init__(self, field_file):
         self.file = field_file
@@ -38,20 +37,22 @@ class Thumbnails(object):
                 except ValueError:
                     attname, renderer = options
                     key = attname
+
                 ext = '.%s' % renderer.format
-                name = self.field.generate_thumbnail_filename(
-                    instance=self.instance,
+
+                name = self.field.get_thumbnail_filename(
+                    instance=self.instance, 
                     original=self.file,
-                    key=key,
-                    ext=ext,
-                )
+                    key=key, 
+                    ext=ext)                    
+
                 thumbnail = ThumbnailFieldFile(
                     attname,
                     renderer,
                     self.instance,
                     self.field,
-                    name,
-                )
+                    name)
+
                 self._cache[attname] = thumbnail
 
     def clear_cache(self):
@@ -131,39 +132,39 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
 
 
 class ImageWithThumbnailsFieldFile(ImageFieldFile):
+    """File container for an ``ImageWithThumbnailsField``.
+    """
 
     def __init__(self, *args, **kwargs):
         super(ImageWithThumbnailsFieldFile, self).__init__(*args, **kwargs)
-        self.thumbnails = Thumbnails(self)
+        self.thumbnails = ThumbnailSet(self)
 
     def save(self, name, content, save=True):
+        """Save the original image, and its thumbnails.
+        """
         super(ImageWithThumbnailsFieldFile, self).save(name, content, save)
+
         self.thumbnails.clear_cache()
 
+        # iterate over thumbnail
         for thumbnail in self.thumbnails:
             rendered = thumbnail.renderer.generate(content)
-            self.field.thumbnails_storage.save(thumbnail.name, rendered)
+            self.field.storage.save(thumbnail.name, rendered)
 
 
 class ImageWithThumbnailsField(ImageField):
+    """An ``ImageField`` subclass, extended with zero to many thumbnails.
+    """
     attr_class = ImageWithThumbnailsFieldFile
     descriptor_class = FallbackFieldDescriptor
 
-    def __init__(self, thumbnails=None, thumbnails_upload_to=None,
-            thumbnails_storage=None, fallback_path=None, *args, **kwargs):
+    def __init__(self, thumbnails=None, fallback_path=None, *args, **kwargs):                 
         super(ImageWithThumbnailsField, self).__init__(*args, **kwargs)
+
         self.thumbnails = thumbnails or []
-
-        self.thumbnails_storage = thumbnails_storage or self.storage
-        self.thumbnails_upload_to = thumbnails_upload_to
-
-        if callable(self.thumbnails_upload_to):
-            self.generate_thumbnail_filename = self.thumbnails_upload_to
-
-        # fallback field
         self.fallback_path = fallback_path
 
-    def generate_thumbnail_filename(self, instance, original, key, ext):
+    def get_thumbnail_filename(self, instance, original, key, ext):
         base, _ext = os.path.splitext(force_unicode(original))
         return '%s-%s%s' % (base, key, ext)
 
@@ -192,8 +193,8 @@ class ImageFallbackField(ImageField):
         self.fallback_path = fallback_path
 
     def get_db_prep_value(self, value, connection, prepared=False):
-        if value is None or \
-               (hasattr(value, '_empty') and value._empty is None):
+        if (value is None or
+            (hasattr(value, '_empty') and value._empty is None)):
             return None
         return unicode(value)
 
