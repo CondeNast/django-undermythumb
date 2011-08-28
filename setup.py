@@ -9,18 +9,18 @@ f.close()
 
 setup(
     name='django-undermythumb',
-    version='0.1',
+    version='0.1.1',
     description="""
         django-undermythumb is a reusable Django application
         for easy thumb creation and access.
-    """,
+    """.strip(),
     long_description=readme,
-    author='Sean Brant',
-    author_email='seanb@pitchfork.com',
-    url='http://github.com/seanbrant/django-undermythumb/',
+    author='Pitchfork Media, Inc.',
+    author_email='dev@pitchfork.com',
+    url='http://github.com/pitchfork/django-undermythumb/',
     packages=find_packages(),
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
