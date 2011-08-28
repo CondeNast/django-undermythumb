@@ -208,11 +208,17 @@ class ImageFallbackField(ImageField):
         self.fallback_path = fallback_path
 
     def get_db_prep_value(self, value, connection, prepared=False):
-        if (not value or 
-            (not isinstance(value, (ImageFieldFile, ThumbnailFieldFile))) or
-            prepared or
-            (value.field != self or (hasattr(value, '_empty') and value._empty))):
+
+        if not value:
             return None
+
+        if hasattr(value, 'field'):
+            if (value.field != self or (hasattr(value, '_empty') and value._empty)):
+                return None
+
+        if not isinstance(value, (ImageFieldFile, ThumbnailFieldFile, basestring)):
+            return None
+
         return unicode(value)
 
     def south_field_triple(self):
