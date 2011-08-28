@@ -38,7 +38,7 @@ class ThumbnailSet(object):
                 except ValueError:
                     attname, renderer = options
                     key = attname
-                    
+
                     ext = '.%s' % renderer.format
 
                     name = self.field.get_thumbnail_filename(
