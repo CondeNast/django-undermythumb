@@ -3,8 +3,9 @@ import os
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import signals
-from django.db.models.fields.files import ImageField, ImageFieldFile, \
-     ImageFileDescriptor
+from django.db.models.fields.files import (ImageField, 
+                                           ImageFieldFile,
+                                           ImageFileDescriptor)
 from django.utils.encoding import force_unicode, smart_str
 
 
@@ -14,13 +15,12 @@ class ThumbnailFieldFile(ImageFieldFile):
         self.attname = attname
         self.renderer = renderer
         super(ThumbnailFieldFile, self).__init__(*args, **kwargs)
-        self.storage = self.field.thumbnails_storage
 
     def save(self):
         raise NotImplemented("Can't save thumbnails directly.")
 
 
-class Thumbnails(object):
+class ThumbnailSet(object):
 
     def __init__(self, field_file):
         self.file = field_file
@@ -31,28 +31,30 @@ class Thumbnails(object):
         self._populate()
 
     def _populate(self):
-        if not self._cache and self.file.name:
+        if not self._cache and self.file.name and self.instance.id:
             for options in self.field.thumbnails:
                 try:
                     attname, renderer, key = options
                 except ValueError:
                     attname, renderer = options
                     key = attname
-                ext = '.%s' % renderer.format
-                name = self.field.generate_thumbnail_filename(
-                    instance=self.instance,
-                    original=self.file,
-                    key=key,
-                    ext=ext,
-                )
-                thumbnail = ThumbnailFieldFile(
-                    attname,
-                    renderer,
-                    self.instance,
-                    self.field,
-                    name,
-                )
-                self._cache[attname] = thumbnail
+                    
+                    ext = '.%s' % renderer.format
+
+                    name = self.field.get_thumbnail_filename(
+                        instance=self.instance, 
+                        original=self.file,
+                        key=key, 
+                        ext=ext)                    
+
+                    thumbnail = ThumbnailFieldFile(
+                        attname,
+                        renderer,
+                        self.instance,
+                        self.field,
+                        name)
+                    
+                    self._cache[attname] = thumbnail
 
     def clear_cache(self):
         self._cache = {}
@@ -81,19 +83,25 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
         value = super(FallbackFieldDescriptor, self).__get__(instance,
                                                              owner)
 
-        # monkey-patch the thumbnail image field file
-        # to note whether or not this is a mirrored value or
-        # a value given to this field
+        # if given a real value, mark as non-empty and return
+        # for saving to the database
         if (type(value) in (ImageFieldFile,
-                           ThumbnailFieldFile,
-                           ImageWithThumbnailsFieldFile,
-                           ImageFallbackField)
+                            ThumbnailFieldFile,
+                            ImageWithThumbnailsFieldFile,
+                            ImageFallbackField)
                and hasattr(value, 'url')):
             value._empty = False
             return value
+        
+        # this image field has no content
+        value._empty = True
 
-        # this field has no value, and is mirroring
-        # another field's thumbnail
+        # check to see if this image has a fallback path
+        # no fallback path? check to see if the field
+        # has a name, mark as empty/filled, and return.
+        #
+        # we check the "name" attr here, because the file
+        # might not be saved.
         if self.field.fallback_path is None:
             if getattr(value, 'name'):
                 value._empty = False
@@ -107,6 +115,14 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
         else:
             fallback_path = self.field.fallback_path
 
+        # break down the path, and traverse.
+        # if the path is 'article_header.thumbnails.list',
+        # the order would be: article_header -> thumbnails -> list.
+        #
+        # - numbers are interpreted as list indexes.
+        # - ok to use callables in the chain
+        # - can't remember if it's been tested on dictionaries,
+        #   but i don't think it has
         path_bits = fallback_path.split('.')
         mirror_value = instance
 
@@ -126,44 +142,44 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
         if mirror_value is None:
             return None
 
-        mirror_value._empty = True      
+        mirror_value._empty = True
         return mirror_value
 
 
 class ImageWithThumbnailsFieldFile(ImageFieldFile):
+    """File container for an ``ImageWithThumbnailsField``.
+    """
 
     def __init__(self, *args, **kwargs):
         super(ImageWithThumbnailsFieldFile, self).__init__(*args, **kwargs)
-        self.thumbnails = Thumbnails(self)
+        self.thumbnails = ThumbnailSet(self)
 
     def save(self, name, content, save=True):
+        """Save the original image, and its thumbnails.
+        """
         super(ImageWithThumbnailsFieldFile, self).save(name, content, save)
+
         self.thumbnails.clear_cache()
 
+        # iterate over thumbnail
         for thumbnail in self.thumbnails:
             rendered = thumbnail.renderer.generate(content)
-            self.field.thumbnails_storage.save(thumbnail.name, rendered)
+            self.field.storage.save(thumbnail.name, rendered)
 
 
 class ImageWithThumbnailsField(ImageField):
+    """An ``ImageField`` subclass, extended with zero to many thumbnails.
+    """
     attr_class = ImageWithThumbnailsFieldFile
     descriptor_class = FallbackFieldDescriptor
 
-    def __init__(self, thumbnails=None, thumbnails_upload_to=None,
-            thumbnails_storage=None, fallback_path=None, *args, **kwargs):
+    def __init__(self, thumbnails=None, fallback_path=None, *args, **kwargs):                 
         super(ImageWithThumbnailsField, self).__init__(*args, **kwargs)
+
         self.thumbnails = thumbnails or []
-
-        self.thumbnails_storage = thumbnails_storage or self.storage
-        self.thumbnails_upload_to = thumbnails_upload_to
-
-        if callable(self.thumbnails_upload_to):
-            self.generate_thumbnail_filename = self.thumbnails_upload_to
-
-        # fallback field
         self.fallback_path = fallback_path
 
-    def generate_thumbnail_filename(self, instance, original, key, ext):
+    def get_thumbnail_filename(self, instance, original, key, ext):
         base, _ext = os.path.splitext(force_unicode(original))
         return '%s-%s%s' % (base, key, ext)
 
@@ -192,8 +208,7 @@ class ImageFallbackField(ImageField):
         self.fallback_path = fallback_path
 
     def get_db_prep_value(self, value, connection, prepared=False):
-        if value is None or \
-               (hasattr(value, '_empty') and value._empty is None):
+        if (value is None or (value.field != self or (hasattr(value, '_empty') and value._empty))):
             return None
         return unicode(value)
 
