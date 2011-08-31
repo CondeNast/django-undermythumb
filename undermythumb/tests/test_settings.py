@@ -7,3 +7,5 @@ DATABASE_ENGINE = 'sqlite3'
 
 TEST_MEDIA_ROOT = '/tmp/thumbnails-test/'
 TEST_MEDIA_CUSTOM_ROOT = '/tmp/thumbnails-test-custom/'
+
+DEFAULT_FILE_STORAGE = 'storage.FileSystemOverwriteStorage'
