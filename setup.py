@@ -9,7 +9,7 @@ f.close()
 
 setup(
     name='django-undermythumb',
-    version='0.1.1',
+    version='0.2',
     description="""
         django-undermythumb is a reusable Django application
         for easy thumb creation and access.
