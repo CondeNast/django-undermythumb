@@ -4,74 +4,28 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.db import models
 
-from undermythumb.fields import ImageWithThumbnailsField, \
-     ImageFallbackField
+from undermythumb.fields import ImageWithThumbnailsField, ImageFallbackField
 from undermythumb.renderers import CropRenderer
 
 
-class Car(models.Model):
-    image = ImageWithThumbnailsField(
-        upload_to='original',
-        storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
-        thumbnails=(
-            ('small', CropRenderer(25, 25)),
-            ('medium', CropRenderer(50, 50)),
-            ('large', CropRenderer(75, 75)),
-        ),
-    )
+class BlogPost(models.Model):
+    title = models.CharField(max_length=100)
 
+    # an image with thumbnails
+    artwork = ImageWithThumbnailsField(max_length=255,
+                                       upload_to='artwork/',
+                                       thumbnails=(('homepage_image', CropRenderer(300, 150)),
+                                                   ('pagination_image', CropRenderer(150, 75))))
 
-def original_upload_to(instance, filename):
-    base, ext = os.path.splitext(filename)
-    return os.path.join(instance.name, 'original%s' % ext)
+    # an override field, capable of rolling up a path
+    # when it has no value. useful for overriding 
+    # auto-generated thumbnails. the fallback path
+    # should point to an ImageFieldFile of some sort.
+    #
+    # under the hood, this is just an ImageField
+    homepage_image = ImageFallbackField(fallback_path='artwork.thumbnails.homepage_image',
+                                        upload_to='artwork/')
 
-
-def thumbnails_upload_to(instance, original, key, ext):
-    return os.path.join(instance.name, '%s%s' % (key, ext))
-
-
-class Author(models.Model):
-    image = ImageWithThumbnailsField(
-        upload_to='authors/',
-        blank=True, null=True,
-        storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
-        thumbnails_storage=FileSystemStorage(settings.TEST_MEDIA_CUSTOM_ROOT),
-        thumbnails=(
-            ('small', CropRenderer(25, 25, format='png')),
-            ('medium', CropRenderer(50, 50)),
-            ('large', CropRenderer(75, 75)),
-        ),
-    )
-    small_image = ImageFallbackField(fallback_path='image.thumbnails.small',
-                                     upload_to='authors/')
-    
-
-class Book(models.Model):
-    author = models.ForeignKey(Author, null=True)
-    name = models.CharField(max_length=32)
-    author_image = ImageFallbackField('author.image',
-                                      upload_to='authors/',
-                                      null=True)
-    alt_author_image = ImageFallbackField('author_image',
-                                          upload_to='authors/',
-                                          null=True)
-    image = ImageWithThumbnailsField(
-        blank=True, null=True,
-        upload_to=original_upload_to,
-        storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
-        thumbnails_upload_to=thumbnails_upload_to,
-        thumbnails=(
-            ('small', CropRenderer(25, 25)),
-            ('medium', CropRenderer(50, 50)),
-            ('large', CropRenderer(75, 75)),
-        ),
-    )
-    alt_image = ImageWithThumbnailsField(blank=True,
-                                         null=True,
-                                         fallback_path='image',
-                                         upload_to='authors/',
-                                         storage=FileSystemStorage(settings.TEST_MEDIA_ROOT),
-                                         thumbnails=(('small', CropRenderer(25, 25)),
-                                                     ('medium', CropRenderer(50, 50)),
-                                                     ('large', CropRenderer(75, 75))))
-
+    def __unicode__(self):
+        return self.title
+                                       
