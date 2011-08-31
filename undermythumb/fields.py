@@ -4,12 +4,12 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import signals
 from django.db.models.fields.files import (ImageField, 
+                                           ImageFieldFile,
                                            ImageFileDescriptor)
 from django.utils.encoding import force_unicode, smart_str
 
 from undermythumb.files import (ThumbnailFieldFile, 
                                 ImageWithThumbnailsFieldFile)
-from undermythumb.thumbnails import ThumbnailSet
 
 
 def traverse_fallback_path(instance, fallback_path):
