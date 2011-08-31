@@ -38,7 +38,6 @@ class ThumbnailSet(object):
                 except ValueError:
                     attname, renderer = options
                     key = attname
-
                     ext = '.%s' % renderer.format
 
                     name = self.field.get_thumbnail_filename(
@@ -71,78 +70,80 @@ class ThumbnailSet(object):
             yield value
 
 
+def traverse_fallback_path(instance, fallback_path):
+    """Ramble down a dotted path, looking for the end of the road.
+
+    Break down the path, and traverse.
+    If the path is ``article_header.thumbnails.list``,
+    the order would be: ``article_header -> thumbnails -> list``.
+
+    See also: http://en.wikipedia.org/wiki/The_Hunt_(The_Twilight_Zone)
+    """
+
+    value = instance
+    path_bits = fallback_path.split('.')
+    
+    while path_bits:
+        bit = path_bits.pop(0)
+
+        try:
+            bit = int(bit)
+            value = value[bit]
+        except IndexError:
+            value = None
+            break
+        except ValueError:
+            if isinstance(value, dict):
+                value = value[bit]
+            else:
+                value = getattr(value, bit, None)
+                if callable(value):
+                    value = value()
+
+    return value
+
+
 class FallbackFieldDescriptor(ImageFileDescriptor):
 
     def __get__(self, instance, owner):
-        """Returns either the custom thumbnail provided directly
-        to this field, or the thumbnail from the mirror field.
+        """Returns a field's image. If no image is found, this descriptor
+        inspects and traverses its field's ``fallback_path``, to find and return
+        whatever lies at the end of the path.
         """
 
         # if this particular field is empty, return the url
         # of the mirror field's thumbnail
-        value = super(FallbackFieldDescriptor, self).__get__(instance,
-                                                             owner)
+        value = super(FallbackFieldDescriptor, self).__get__(instance, owner)
 
         # if given a real value, mark as non-empty and return
-        # for saving to the database
-        if (type(value) in (ImageFieldFile,
-                            ThumbnailFieldFile,
-                            ImageWithThumbnailsFieldFile,
-                            ImageFallbackField)
-               and hasattr(value, 'url')):
+        if (isinstance(value, (ImageFieldFile,
+                               ThumbnailFieldFile,
+                               ImageWithThumbnailsFieldFile,
+                               ImageFallbackField))
+            and hasattr(value, 'url')):
             value._empty = False
             return value
         
-        # this image field has no content
+        # this value has no content. mark it as empty.
         value._empty = True
 
         # check to see if this image has a fallback path
         # no fallback path? check to see if the field
         # has a name, mark as empty/filled, and return.
-        #
-        # we check the "name" attr here, because the file
-        # might not be saved.
         if self.field.fallback_path is None:
             if getattr(value, 'name'):
                 value._empty = False
-            else:
-                value._empty = True
             return value
 
-        if callable(self.field.fallback_path):
-            # call fallback path function with instance
-            fallback_path = self.field.fallback_path(instance)
-        else:
-            fallback_path = self.field.fallback_path
-
-        # break down the path, and traverse.
-        # if the path is 'article_header.thumbnails.list',
-        # the order would be: article_header -> thumbnails -> list.
-        #
-        # - numbers are interpreted as list indexes.
-        # - ok to use callables in the chain
-        # - can't remember if it's been tested on dictionaries,
-        #   but i don't think it has
-        path_bits = fallback_path.split('.')
-        mirror_value = instance
-
-        while path_bits:
-            bit = path_bits.pop(0)
-            try:
-                bit = int(bit)
-                mirror_value = mirror_value[bit]
-            except IndexError:
-                mirror_value = None
-                break
-            except ValueError:
-                mirror_value = getattr(mirror_value, bit, None)
-                if callable(mirror_value):
-                    mirror_value = mirror_value()
+        # using the instance, trace through the fallback path
+        mirror_value = traverse_fallback_path(instance, 
+                                              self.field.fallback_path)
 
         if mirror_value is None:
             return None
 
         mirror_value._empty = True
+
         return mirror_value
 
 
@@ -194,11 +195,8 @@ class ImageWithThumbnailsField(ImageField):
 
 
 class ImageFallbackField(ImageField):
-    """A special ImageField that allows a user to optionally override
-    a particular ImageWithThumbnailsField thumbnail, or transparently
-    fall back to another thumbnail if no image is supplied.
-
-    No special transformations are applied to uploaded images.
+    """A special ``ImageField`` subclass for defining an image field
+    capable of falling back to the value of another field if empty.
     """
     descriptor_class = FallbackFieldDescriptor
 
@@ -208,12 +206,26 @@ class ImageFallbackField(ImageField):
         self.fallback_path = fallback_path
 
     def get_db_prep_value(self, value, connection, prepared=False):
-        if (value is None or (value.field != self or (hasattr(value, '_empty') and value._empty))):
+        """Ensures that a given value comes from *this* field instance,
+        is not empty, and is *only* an ``ImageFieldFile``.
+
+        This logic prevents values from fallback path traversal from
+        being persisted.
+        """
+
+        if not value:
             return None
-        return unicode(value)
+
+        # we only want ImageFieldFile instances given to *this* field
+        if ((type(value) == ImageFieldFile) and 
+            (value.field == self) and
+            (hasattr(value, '_empty') and not value._empty)):
+            return unicode(value)
+        
+        return None
 
     def south_field_triple(self):
-        """Return a description of this field for South.
+        """South field descriptor.
         """
         from south.modelsinspector import introspector
 

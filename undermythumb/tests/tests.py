@@ -5,228 +5,126 @@ import uuid
 from django.conf import settings
 from django.core.files.base import ContentFile, File
 from django.core.files.images import ImageFile
+from django.db import connection
 from django.test import TestCase
 
 from PIL import Image
 
-from undermythumb.fields import ImageWithThumbnailsField
-from undermythumb.renderers import BaseRenderer, CropRenderer, \
-     ResizeRenderer, LetterboxRenderer
-from undermythumb.tests.models import Car, Book, Author
+from undermythumb.fields import ImageWithThumbnailsField, ImageFallbackField
+from undermythumb.renderers import CropRenderer, ResizeRenderer
+                                    
+                                    
+from undermythumb.tests.models import BlogPost
 
 
-class AutoThumbsTestCase(TestCase):
+root = os.path.dirname(__file__)
+path = lambda *p: os.path.join(root, *p)
 
+
+class UnderMyThumbTestSuite(TestCase):
+    """Test the follow scenarios:
+
+    1. Upload 'artwork' image, verify that ImageFallbackField fields are blank.
+    2. Re-save uploaded artwork, verify that ImageFallbackField fields are blank.
+    3. Upload image into ImageFallbackField, ensure correct filename.
+    4. Clear image from ImageFallbackField, ensure db value is None,
+       ensure field returns correct fallback image.
+    """
+    
     def setUp(self):
-        root = os.path.dirname(__file__)
-        self.tmpname = os.path.join(root, '_image.jpg')
-        try:
-            os.mkdir(settings.TEST_MEDIA_ROOT)
-            os.mkdir(settings.TEST_MEDIA_CUSTOM_ROOT)
-        except OSError:
-            pass
+        self.cursor = connection.cursor()
 
     def tearDown(self):
-        shutil.rmtree(settings.TEST_MEDIA_ROOT)
-        shutil.rmtree(settings.TEST_MEDIA_CUSTOM_ROOT)
+        shutil.rmtree(os.path.realpath('./artwork'))
 
-    def _get_image(self, name=None):
-        return ImageFile(open(self.tmpname), name=name)
+    def get_test_image(self):
+        return ImageFile(open(path('statler_waldorf.jpg')))
 
-    def test_base_renderer(self):
-        renderer = BaseRenderer()
+    def get_test_thumbnail(self):
+        return ImageFile(open(path('sweetums_lecture.jpg')))
 
-        tmp = renderer._create_tmp_image(self._get_image())
-        self.assertTrue(isinstance(tmp, Image.Image))
-
-        img = renderer._create_content_file(tmp)
-        self.assertTrue(isinstance(img, ContentFile))
-
-        self.assertRaises(NotImplementedError, renderer.generate,
-                          self._get_image())
-
-    def test_crop_renderer(self):
-        renderer = CropRenderer(50, 50)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (50, 50))
-
-        renderer = CropRenderer(50, 10)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (50, 10))
-
-    def test_resize_renderer(self):
-        renderer = ResizeRenderer(50, 10, upscale=True)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (50, 50))
-
-        renderer = ResizeRenderer(50, 10, constrain=False)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (50, 10))
-
-    def test_resize_renderer_upscaling(self):
-        renderer = ResizeRenderer(500, 500, upscale=False)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (100, 100))
-
-        renderer = ResizeRenderer(500, 500, upscale=True)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (500, 500))
-
-    def test_letterbox_renderer(self):
-        # TODO: needs a better test. this only checks that
-        # the image is the correct size, and not that it's
-        # been letterboxed properly. A proper letterboxing
-        # test would check the border around each side.
+    def get_db_thumbnails(self, db_table, instance_id, *thumbnail_names):
+        thumbnail_keys = ' '.join(thumbnail_names)
         
-        renderer = LetterboxRenderer(500, 500, bg_color='#000000',
-                                     quality=100, upscale=False)
-        content = renderer.generate(self._get_image())
-        img = ImageFile(content)
-        self.assertEqual((img.width, img.height), (500, 500))
+        self.cursor.execute('select homepage_image from %s where id=%s' % 
+                            (db_table, instance_id))
+        return self.cursor.fetchone()
 
-    def test_on_func_upload(self):
-        book1_uuid = unicode(uuid.uuid4())
-        book1 = Book(name=book1_uuid, image=self._get_image('book1.jpg'))
-        book1.save()
-
-        self.assertEqual(book1.image.name,
-                         os.path.join(book1_uuid, 'original.jpg'))
-
-        self.assertEqual(book1.image.thumbnails.small.name,
-                         os.path.join(book1_uuid, 'small.jpg'))
-
-        self.assertEqual(book1.image.thumbnails.medium.name,
-                         os.path.join(book1_uuid, 'medium.jpg'))
-
-        self.assertEqual(book1.image.thumbnails.large.name,
-                         os.path.join(book1_uuid, 'large.jpg'))
-
-        book2_uuid = unicode(uuid.uuid4())
-        book2 = Book(name=book2_uuid, image=self._get_image('book2.jpg'))
-        book2.save()
-
-        self.assertEqual(book2.image.name,
-                         os.path.join(book2_uuid, 'original.jpg'))
-
-        self.assertEqual(book2.image.thumbnails.small.name,
-                         os.path.join(book2_uuid, 'small.jpg'))
-
-        self.assertEqual(book2.image.thumbnails.medium.name,
-                         os.path.join(book2_uuid, 'medium.jpg'))
-
-        self.assertEqual(book2.image.thumbnails.large.name,
-                         os.path.join(book2_uuid, 'large.jpg'))
-
-    def test_custom_thumbnails_storage(self):
-        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
-        self.assertTrue(settings.TEST_MEDIA_ROOT in author1.image.path)
-        self.assertTrue(settings.TEST_MEDIA_CUSTOM_ROOT in
-            author1.image.thumbnails.small.path)
-
-    def test_thumbnails_update_on_save(self):
-        author1 = Author.objects.create(image=self._get_image('author1.jpg'))
-        self.assertEquals(author1.image, 'authors/author1.jpg')
-        self.assertEquals(author1.image.thumbnails.small,
-                          'authors/author1-small.png')
-        author1.image = self._get_image('author1-1.jpg')
-        author1.save()
-        self.assertEquals(author1.image, 'authors/author1-1.jpg')
-        self.assertEquals(author1.image.thumbnails.small,
-                          'authors/author1-1-small.png')
-
-    def test_thumbnails_available_with_empty_image(self):
-        """Ensure that an empty image field still makes available
-        the thumbnails accessor.
-        """
-        
-        author = Author.objects.create()
-
-        # author.image should be None
-        self.assertEqual(author.image, None)
-        self.assertEqual(author.image.thumbnails.small, None)
-
-    def test_imagefallbackfield_fallback(self):
-        """Ensure that an ImageFallbackField returns the correct fallback image.
+    def test_simple_fallback(self):
+        """Ensures fallbacks from one field to another work,
+        and that no fallback values are persisted.
         """
 
-        author = Author.objects.create(image=self._get_image('author.jpg'))
-        book = Book.objects.create(author=author)
+        post = BlogPost.objects.create(title='Test Post', 
+                                       artwork=self.get_test_image())
+        post_id = post.id
+        post = BlogPost.objects.get(id=post_id)
 
-        # check for correct image url from source field
-        self.assertEqual(author.image.url, 'authors/author.jpg')
-        self.assertNotEqual(author.small_image, None)
+        # ensure the file was uploaded correctly
+        self.assertEqual(post.artwork.url, 'artwork/statler_waldorf.jpg')
 
-        # assert that the "small image" url mirrors the
-        # small thumbnail from "image"
-        self.assertEqual(author.small_image.url,
-                         author.image.thumbnails.small.url)
+        # ensure that "homepage_image" falls back to the right thumbnail
+        self.assertEqual(post.homepage_image.url, 
+                         post.artwork.thumbnails.homepage_image.url)
 
-        # assert that fallback paths work with FK relationships
-        self.assertEqual(book.author_image.url, author.image.url)
+        # ensure that no value was saved to "homepage_image"
+        self.assertEqual(self.get_db_thumbnails(BlogPost._meta.db_table,
+                                                post_id,
+                                                'homepage_image'), 
+                         (None, ))
 
-    def test_imagefallbackfield_populated(self):
-        """Ensure that an ImageFallbackField doesn't ignore it's own content.
+    def test_uploading_image_to_fallback_field(self):
+        """Ensures fallback field uploads are properly persisted.
         """
 
-        author = Author.objects.create(image=self._get_image('author.jpg'))
-        book = Book.objects.create(author=author,
-                                   author_image=self._get_image('book_author.jpg'))
+        post = BlogPost.objects.create(title='Test Post',
+                                       artwork=self.get_test_image())
 
-        # assert that the fallback field returns 'book_author.jpg'
-        self.assertNotEqual(book.author_image.url, author.image.url)
-        self.assertEqual(book.author_image.url,
-                         'authors/book_author.jpg')
+        # save post with a thumbnail
+        post.homepage_image = self.get_test_thumbnail()
+        post.save()
 
-    def test_thumbnailfield_fallback(self):
-        """Ensure that an ImageWithThumbnailsField falls back correctly.
+        # reload post
+        post_id = post.id
+        post = BlogPost.objects.get(id=post_id)
 
-        In this test case, 'book.alt_image' should fall back to
-        'book.image' if empty.
+        # ensure "artwork" field is unchanged
+        self.assertEqual(post.artwork.url, 'artwork/statler_waldorf.jpg')
+
+        # ensure upload was successful
+        self.assertEqual(post.homepage_image.url, 
+                         'artwork/sweetums_lecture.jpg')
+
+        # ensure thumbnail value as persisted properly
+        self.assertEqual(self.get_db_thumbnails(BlogPost._meta.db_table,
+                                                post_id,
+                                                'homepage_image'),
+                         ('artwork/sweetums_lecture.jpg', ))        
+
+    def test_clearing_image_from_fallback_field(self):
+        """Ensures that clearing an ImageFallbackField image leaves 
+        the db field empty, and rolls back properly.
         """
 
-        book = Book.objects.create(image=self._get_image('book.jpg'))
+        post = BlogPost.objects.create(title='Test Post',
+                                       artwork=self.get_test_image(),
+                                       homepage_image=self.get_test_thumbnail())
+        post.save()
 
-        # 'book.alt_image.url' should match 'book.image.url'
-        self.assertEqual(book.alt_image.url, book.image.url)
+        # load post
+        post_id = post.id
+        post = BlogPost.objects.get(id=post_id)
 
-        # 'book.alt_image.thumbnails.small.url' should match
-        # that of 'book.image...'
-        self.assertEqual(book.alt_image.thumbnails.small.url,
-                         book.image.thumbnails.small.url)
-        
-    def test_thumbnailfield_populated(self):
-        """Ensure that a fallback-enabled ImageWithThumbnailsField returns it's own content.
-        """
+        # remove "homepage_image" from the post
+        post.homepage_image = None
+        post.save()
 
-        book = Book.objects.create(name='Thinner',
-                                   image=self._get_image('book.jpg'),
-                                   alt_image=self._get_image('book_alt.jpg'))
+        # assert that this change has been persisted
+        self.assertEqual(self.get_db_thumbnails(BlogPost._meta.db_table,
+                                                post_id,
+                                                'homepage_image'),
+                         (None, ))
 
-        # 'alt_image' urls should not mirror 'image' urls
-        self.assertEqual(book.alt_image.url, 'authors/book_alt.jpg')
-        self.assertNotEqual(book.image.url, book.alt_image.url)
-
-        # make sure thumbnails are properly stored, and not mirrored
-        self.assertEqual(book.alt_image.thumbnails.small.url,
-                         'authors/book_alt-small.jpg')
-        self.assertNotEqual(book.alt_image.thumbnails.small.url,
-                            book.image.thumbnails.small.url)
-
-    def test_imagefallbackfield_depth(self):
-        """Ensure that falling back will continue falling until something is hit.
-
-        In this test case, 'book.alt_author_image' should fall back
-        all the way to 'author.image'.
-        """
-
-        author = Author.objects.create(image=self._get_image('author.jpg'))
-        book = Book.objects.create(author=author)
-
-        self.assertEqual(book.alt_author_image.url,
-                         author.image.url)
+        # assert that the correct thumbnail is generated
+        self.assertEqual(post.homepage_image.url,
+                         post.artwork.thumbnails.homepage_image.url)

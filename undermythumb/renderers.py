@@ -11,12 +11,11 @@ from PIL import Image, ImageOps
 
 
 class BaseRenderer(object):
+    """Renderer base. Subclass this to build your own renderers.
     """
-    You can subclass this to get basic rendering behavior.
 
-    """
-    def __init__(self, format='jpg', quality=75, force_rgb=True,
-            *args, **kwargs):
+    def __init__(self, format='jpg', quality=100, force_rgb=True,
+                 *args, **kwargs):
         self.format = format
         self.quality = quality
         self.force_rgb = force_rgb
