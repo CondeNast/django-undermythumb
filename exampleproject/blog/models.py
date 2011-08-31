@@ -1,7 +1,3 @@
-import os
-
-from django.conf import settings
-from django.core.files.storage import FileSystemStorage
 from django.db import models
 
 from undermythumb.fields import ImageWithThumbnailsField, ImageFallbackField
@@ -15,7 +11,8 @@ class BlogPost(models.Model):
     artwork = ImageWithThumbnailsField(max_length=255,
                                        upload_to='artwork/',
                                        thumbnails=(('homepage_image', CropRenderer(300, 150)),
-                                                   ('pagination_image', CropRenderer(150, 75))))
+                                                   ('pagination_image', CropRenderer(150, 75))),
+                                       help_text='Source artwork. Thumbnails automatically generated from this field.')
 
     # an override field, capable of rolling up a path
     # when it has no value. useful for overriding 
@@ -24,8 +21,8 @@ class BlogPost(models.Model):
     #
     # under the hood, this is just an ImageField
     homepage_image = ImageFallbackField(fallback_path='artwork.thumbnails.homepage_image',
-                                        upload_to='artwork/')
+                                        upload_to='artwork/',
+                                        help_text='Optional override for "homepage_image" thumbnail.')
 
     def __unicode__(self):
         return self.title
-                                       
