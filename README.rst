@@ -11,6 +11,14 @@ Documentation forthcoming.
 Changelog
 ---------
 
+0.2.1
+~~~~~
+
+Mainteance update.
+
+- Abtracted thumbnail collection object and field files into own modules.
+- Added ``*~`` to ``.gitignore``.
+
 0.2
 ~~~
 
