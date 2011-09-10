@@ -9,10 +9,9 @@ f.close()
 
 setup(
     name='django-undermythumb',
-    version='0.2.1',
+    version='0.2.2',
     description="""
-        django-undermythumb is a reusable Django application
-        for easy thumb creation and access.
+The Django thumbnail generation package with a heart of stone.
     """.strip(),
     long_description=readme,
     author='Pitchfork Media, Inc.',
