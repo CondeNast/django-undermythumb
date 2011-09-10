@@ -3,7 +3,7 @@ Under My Thumb
 
 The Django thumbnail generator with a heart of stone.
 
-Read the docs: 
+`Read the docs <http://django-undermythumb.readthedocs.org/en/latest/>`_!
 
 Changelog
 ---------
