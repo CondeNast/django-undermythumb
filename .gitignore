@@ -1,3 +1,6 @@
 *.pyc
 *.egg-info/
 *~
+docs/_build/
+docs/Makefile
+docs/make.bat
