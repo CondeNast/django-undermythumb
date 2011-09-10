@@ -3,13 +3,18 @@ Under My Thumb
 
 The Django thumbnail generator with a heart of stone.
 
-Usage
------
-
-Documentation forthcoming.
+Read the docs: 
 
 Changelog
 ---------
+
+0.2.2
+~~~~~
+
+Added initial project documentation.
+
+- Sphinx-written docs now found in ``/docs`` dir. 
+- Cleaned up grammatical and formatting mistakes in ``renderers`` module.
 
 0.2.1
 ~~~~~
