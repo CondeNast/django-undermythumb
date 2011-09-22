@@ -74,7 +74,7 @@ class CropRenderer(BaseRenderer):
         super(CropRenderer, self).__init__(*args, **kwargs)
 
     def _render(self, image):
-        return ImageOps.fit(image, self.width, self.height),
+        return ImageOps.fit(image, (self.width, self.height),
                             Image.ANTIALIAS, 0, (0.5, 0.5))
 
 
@@ -130,7 +130,7 @@ class LetterboxRenderer(ResizeRenderer):
     
     def __init__(self, width, height, bg_color='#FFFFFF', *args, **kwargs):                 
         super(LetterboxRenderer, self).__init__(width, height, *args, 
-                                                **kwargs):
+                                                **kwargs)
 
         # convert hex string to rgba quad
         bg_color = bg_color.strip('#')
