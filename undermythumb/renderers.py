@@ -68,14 +68,15 @@ class CropRenderer(BaseRenderer):
     """Renders an image cropped to a given width and height.
     """
 
-    def __init__(self, width, height, *args, **kwargs):
+    def __init__(self, width, height, bleed=0., *args, **kwargs):
         self.width = int(width)
         self.height = int(height)
+        self.bleed = float(bleed)
         super(CropRenderer, self).__init__(*args, **kwargs)
 
     def _render(self, image):
         return ImageOps.fit(image, (self.width, self.height),
-                            Image.ANTIALIAS, 0, (0.5, 0.5))
+                            Image.ANTIALIAS, self.bleed, (0.5, 0.5))
 
 
 class ResizeRenderer(BaseRenderer):
