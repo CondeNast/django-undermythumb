@@ -32,12 +32,12 @@ class Command(BaseCommand):
             if model is None:
                 raise ValueError
         except (ValueError, AttributeError):
-            raise CommandError('Invalid content type %s' %  content_type_path)
+            raise CommandError('Invalid content type %s' % content_type_path)
 
         try:
             field = model._meta.get_field_by_name(field_name)[0]
         except FieldDoesNotExist:
-            raise CommandError('Invalid field name %s' %  field_name)
+            raise CommandError('Invalid field name %s' % field_name)
 
         if sizes is None:
             raise CommandError('Must specify sizes, -s or --size')
@@ -45,7 +45,7 @@ class Command(BaseCommand):
         thumbnails = [t[0] for t in field.thumbnails for s in sizes]
         invalid_sizes = [s for s in sizes if s not in thumbnails]
         if invalid_sizes:
-            raise CommandError('No thumbnails for sizes %r' %  invalid_sizes)
+            raise CommandError('No thumbnails for sizes %r' % invalid_sizes)
 
         objects = model._default_manager.only(field_name)
         for obj in objects:
@@ -54,15 +54,15 @@ class Command(BaseCommand):
 
         self.stdout.write('Done.\n')
 
-
     def create_thumbnails(self, field_instance, sizes):
         thumbnails = [t for t in field_instance.thumbnails
-                     if t.attname in sizes]
+                      if t.attname in sizes]
 
         if not thumbnails:
             return
 
         self.stdout.write('Reading %s ...\n' % field_instance.url)
+
         try:
             # Ignore bad files, this should log in the future.
             content = ContentFile(field_instance.read())

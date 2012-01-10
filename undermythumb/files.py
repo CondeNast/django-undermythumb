@@ -1,7 +1,7 @@
 from django.db.models.fields.files import ImageFieldFile
 
 
-__all__ = ['ThumbnailFieldFile', 'ImageWithThumbnailsFieldFile']
+__all__ = ('ThumbnailFieldFile', 'ImageWithThumbnailsFieldFile')
 
 
 class ThumbnailSet(object):
@@ -25,10 +25,10 @@ class ThumbnailSet(object):
                     ext = '.%s' % renderer.format
 
                     name = self.field.get_thumbnail_filename(
-                        instance=self.instance, 
+                        instance=self.instance,
                         original=self.file,
-                        key=key, 
-                        ext=ext)                    
+                        key=key,
+                        ext=ext)
 
                     thumbnail = ThumbnailFieldFile(
                         attname,
@@ -36,7 +36,7 @@ class ThumbnailSet(object):
                         self.instance,
                         self.field,
                         name)
-                    
+
                     self._cache[attname] = thumbnail
 
     def clear_cache(self):

@@ -1,8 +1,4 @@
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
-
+from cStringIO import StringIO
 import struct
 
 from django.core.files.base import ContentFile
@@ -11,7 +7,7 @@ from PIL import Image, ImageOps
 
 
 class BaseRenderer(object):
-    """Base class for renderers. 
+    """Base class for renderers.
 
     Subclass this to build your own renderers.
     """
@@ -57,7 +53,7 @@ class BaseRenderer(object):
         return self._create_content_file(rendered)
 
     def _render(self, image):
-        """Renders the image. Override this method when creating 
+        """Renders the image. Override this method when creating
         a custom renderer.
         """
 
@@ -98,7 +94,7 @@ class ResizeRenderer(BaseRenderer):
     def _render(self, image):
         dw, dh = self.width, self.height
         sw, sh = image.size
-        
+
         if self.constrain:
             sr = float(sw) / float(sh)
             if sw > sh:
@@ -107,7 +103,7 @@ class ResizeRenderer(BaseRenderer):
                 dh = dw * sr
 
         # resize if the source dimensions are smaller than the desired,
-        # or the user has approved scaling the image above 
+        # or the user has approved scaling the image above
         # it's original dimensions
         if ((((dw > sw) or (dh > sh)) and self.upscale) or
             ((dw < sw) or (dh < sh))):
@@ -117,8 +113,8 @@ class ResizeRenderer(BaseRenderer):
 
 
 class LetterboxRenderer(ResizeRenderer):
-    """Resizes an image to a given width and height using the ``ResizeRenderer``, 
-    and places it on a colored canvas. 
+    """Resizes an image to a given width and height using the
+    ``ResizeRenderer``, and places it on a colored canvas.
 
     Cavas color is defined as a hexidecimal color value.
 
@@ -127,9 +123,9 @@ class LetterboxRenderer(ResizeRenderer):
         LetterboxRenderer(150, 150, bg_color='#000000')
 
     """
-    
-    def __init__(self, width, height, bg_color='#FFFFFF', *args, **kwargs):                 
-        super(LetterboxRenderer, self).__init__(width, height, *args, 
+
+    def __init__(self, width, height, bg_color='#FFFFFF', *args, **kwargs):
+        super(LetterboxRenderer, self).__init__(width, height, *args,
                                                 **kwargs)
 
         # convert hex string to rgba quad
@@ -142,7 +138,7 @@ class LetterboxRenderer(ResizeRenderer):
         src_w, src_h = image.size
 
         # place image on canvas and save
-        canvas = Image.new('RGBA', (self.width, self.height), self.bg_color)                           
+        canvas = Image.new('RGBA', (self.width, self.height), self.bg_color)
         paste_x = (self.width - src_w) / 2
         paste_y = (self.height - src_h) / 2
         canvas.paste(image, (paste_x, paste_y))
