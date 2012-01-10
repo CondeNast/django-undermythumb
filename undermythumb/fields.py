@@ -1,14 +1,11 @@
-import datetime
 import os
 
-from django.core.exceptions import ImproperlyConfigured
-from django.db.models import signals
-from django.db.models.fields.files import (ImageField, 
+from django.db.models.fields.files import (ImageField,
                                            ImageFieldFile,
                                            ImageFileDescriptor)
-from django.utils.encoding import force_unicode, smart_str
+from django.utils.encoding import force_unicode
 
-from undermythumb.files import (ThumbnailFieldFile, 
+from undermythumb.files import (ThumbnailFieldFile,
                                 ImageWithThumbnailsFieldFile)
 
 
@@ -24,7 +21,7 @@ def traverse_fallback_path(instance, fallback_path):
 
     value = instance
     path_bits = fallback_path.split('.')
-    
+
     while path_bits:
         bit = path_bits.pop(0)
 
@@ -49,8 +46,8 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
 
     def __get__(self, instance, owner):
         """Returns a field's image. If no image is found, this descriptor
-        inspects and traverses its field's ``fallback_path``, to find and return
-        whatever lies at the end of the path.
+        inspects and traverses its field's ``fallback_path``,
+        to find and return whatever lies at the end of the path.
         """
 
         # if this particular field is empty, return the url
@@ -65,7 +62,7 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
             and hasattr(value, 'url')):
             value._empty = False
             return value
-        
+
         # this value has no content. mark it as empty.
         value._empty = True
 
@@ -78,7 +75,7 @@ class FallbackFieldDescriptor(ImageFileDescriptor):
             return value
 
         # using the instance, trace through the fallback path
-        mirror_value = traverse_fallback_path(instance, 
+        mirror_value = traverse_fallback_path(instance,
                                               self.field.fallback_path)
 
         if mirror_value is None:
@@ -95,13 +92,14 @@ class ImageWithThumbnailsField(ImageField):
     attr_class = ImageWithThumbnailsFieldFile
     descriptor_class = FallbackFieldDescriptor
 
-    def __init__(self, thumbnails=None, fallback_path=None, *args, **kwargs):                 
+    def __init__(self, thumbnails=None, fallback_path=None, *args, **kwargs):
         super(ImageWithThumbnailsField, self).__init__(*args, **kwargs)
 
         self.thumbnails = thumbnails or []
         self.fallback_path = fallback_path
 
     def get_thumbnail_filename(self, instance, original, key, ext):
+        # return filename
         base, _ext = os.path.splitext(force_unicode(original))
         return '%s-%s%s' % (base, key, ext)
 
@@ -138,11 +136,11 @@ class ImageFallbackField(ImageField):
             return None
 
         # we only want ImageFieldFile instances given to *this* field
-        if ((type(value) == ImageFieldFile) and 
+        if ((type(value) == ImageFieldFile) and
             (value.field == self) and
             (hasattr(value, '_empty') and not value._empty)):
             return unicode(value)
-        
+
         return None
 
     def south_field_triple(self):

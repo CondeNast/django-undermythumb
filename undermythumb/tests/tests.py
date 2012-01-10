@@ -1,19 +1,10 @@
 import os
 import shutil
-import uuid
 
-from django.conf import settings
-from django.core.files.base import ContentFile, File
 from django.core.files.images import ImageFile
 from django.db import connection
 from django.test import TestCase
 
-from PIL import Image
-
-from undermythumb.fields import ImageWithThumbnailsField, ImageFallbackField
-from undermythumb.renderers import CropRenderer, ResizeRenderer
-                                    
-                                    
 from undermythumb.tests.models import BlogPost
 
 
@@ -25,12 +16,13 @@ class UnderMyThumbTestSuite(TestCase):
     """Test the follow scenarios:
 
     1. Upload 'artwork' image, verify that ImageFallbackField fields are blank.
-    2. Re-save uploaded artwork, verify that ImageFallbackField fields are blank.
+    2. Re-save uploaded artwork, verify that ImageFallbackField
+       fields are blank.
     3. Upload image into ImageFallbackField, ensure correct filename.
     4. Clear image from ImageFallbackField, ensure db value is None,
        ensure field returns correct fallback image.
     """
-    
+
     def setUp(self):
         self.cursor = connection.cursor()
 
@@ -44,9 +36,7 @@ class UnderMyThumbTestSuite(TestCase):
         return ImageFile(open(path('sweetums_lecture.jpg')))
 
     def get_db_thumbnails(self, db_table, instance_id, *thumbnail_names):
-        thumbnail_keys = ' '.join(thumbnail_names)
-        
-        self.cursor.execute('select homepage_image from %s where id=%s' % 
+        self.cursor.execute('select homepage_image from %s where id=%s' %
                             (db_table, instance_id))
         return self.cursor.fetchone()
 
@@ -55,7 +45,7 @@ class UnderMyThumbTestSuite(TestCase):
         and that no fallback values are persisted.
         """
 
-        post = BlogPost.objects.create(title='Test Post', 
+        post = BlogPost.objects.create(title='Test Post',
                                        artwork=self.get_test_image())
         post_id = post.id
         post = BlogPost.objects.get(id=post_id)
@@ -64,13 +54,13 @@ class UnderMyThumbTestSuite(TestCase):
         self.assertEqual(post.artwork.url, 'artwork/statler_waldorf.jpg')
 
         # ensure that "homepage_image" falls back to the right thumbnail
-        self.assertEqual(post.homepage_image.url, 
+        self.assertEqual(post.homepage_image.url,
                          post.artwork.thumbnails.homepage_image.url)
 
         # ensure that no value was saved to "homepage_image"
         self.assertEqual(self.get_db_thumbnails(BlogPost._meta.db_table,
                                                 post_id,
-                                                'homepage_image'), 
+                                                'homepage_image'),
                          (None, ))
 
     def test_uploading_image_to_fallback_field(self):
@@ -92,23 +82,24 @@ class UnderMyThumbTestSuite(TestCase):
         self.assertEqual(post.artwork.url, 'artwork/statler_waldorf.jpg')
 
         # ensure upload was successful
-        self.assertEqual(post.homepage_image.url, 
+        self.assertEqual(post.homepage_image.url,
                          'artwork/sweetums_lecture.jpg')
 
         # ensure thumbnail value as persisted properly
         self.assertEqual(self.get_db_thumbnails(BlogPost._meta.db_table,
                                                 post_id,
                                                 'homepage_image'),
-                         ('artwork/sweetums_lecture.jpg', ))        
+                         ('artwork/sweetums_lecture.jpg', ))
 
     def test_clearing_image_from_fallback_field(self):
-        """Ensures that clearing an ImageFallbackField image leaves 
+        """Ensures that clearing an ImageFallbackField image leaves
         the db field empty, and rolls back properly.
         """
 
-        post = BlogPost.objects.create(title='Test Post',
-                                       artwork=self.get_test_image(),
-                                       homepage_image=self.get_test_thumbnail())
+        post = BlogPost.objects.create(
+            title='Test Post',
+            artwork=self.get_test_image(),
+            homepage_image=self.get_test_thumbnail())
         post.save()
 
         # load post
