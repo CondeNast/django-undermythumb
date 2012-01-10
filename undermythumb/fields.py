@@ -3,7 +3,6 @@ import os
 from django.db.models.fields.files import (ImageField,
                                            ImageFieldFile,
                                            ImageFileDescriptor)
-from django.utils.encoding import force_unicode
 
 from undermythumb.files import (ThumbnailFieldFile,
                                 ImageWithThumbnailsFieldFile)
@@ -98,10 +97,33 @@ class ImageWithThumbnailsField(ImageField):
         self.thumbnails = thumbnails or []
         self.fallback_path = fallback_path
 
-    def get_thumbnail_filename(self, instance, original, key, ext):
-        # return filename
-        base, _ext = os.path.splitext(force_unicode(original))
-        return '%s-%s%s' % (base, key, ext)
+    def get_thumbnail_filename(self, instance, original_file,
+                               thumbnail_name, ext):
+        """Generates a predictable thumbnail filename.
+
+        Thumbnail generation follows this template: ::
+
+            {thumbnail_name}.{source file hash}.{ext}
+
+        Place no expensive calculations here -- this runs any
+        time a thumbnail field is accessed.
+
+        :param instance: Model instance containing the field
+        :param original_file: Uploaded image file
+        :param thumbnail_name: Model instance field name
+        :param ext: File extension *with* '.' separator.
+        """
+
+        path = os.path.dirname(original_file.name)
+        hash_value, _ = os.path.splitext(os.path.basename(original_file.name))
+
+        filename = '%(thumbnail)s.%(hash)s%(ext)s' % {
+            'path': path,
+            'thumbnail': thumbnail_name,
+            'hash': hash_value,
+            'ext': ext}
+
+        return os.path.join(path, filename)
 
     def south_field_triple(self):
         """Return a description of this field for South.

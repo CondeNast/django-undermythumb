@@ -1,3 +1,6 @@
+from hashlib import sha1
+import os
+
 from django.db.models.fields.files import ImageFieldFile
 
 
@@ -24,20 +27,20 @@ class ThumbnailSet(object):
                     key = attname
                     ext = '.%s' % renderer.format
 
-                    name = self.field.get_thumbnail_filename(
-                        instance=self.instance,
-                        original=self.file,
-                        key=key,
-                        ext=ext)
+                name = self.field.get_thumbnail_filename(
+                    instance=self.instance,
+                    original_file=self.file,
+                    thumbnail_name=key,
+                    ext=ext)
 
-                    thumbnail = ThumbnailFieldFile(
-                        attname,
-                        renderer,
-                        self.instance,
-                        self.field,
-                        name)
+                thumbnail = ThumbnailFieldFile(
+                    attname,
+                    renderer,
+                    self.instance,
+                    self.field,
+                    name)
 
-                    self._cache[attname] = thumbnail
+                self._cache[attname] = thumbnail
 
     def clear_cache(self):
         self._cache = {}
@@ -74,13 +77,20 @@ class ImageWithThumbnailsFieldFile(ImageFieldFile):
         self.thumbnails = ThumbnailSet(self)
 
     def save(self, name, content, save=True):
-        """Save the original image, and its thumbnails.
-        """
+        # set file name to first 8 chars of hash of contents
+        _, ext = os.path.splitext(name)
+        file_hash = sha1(content.read()).hexdigest()[:8]
+        name = file_hash + ext
+
+        # save source file
         super(ImageWithThumbnailsFieldFile, self).save(name, content, save)
 
         self.thumbnails.clear_cache()
 
-        # iterate over thumbnail
         for thumbnail in self.thumbnails:
             rendered = thumbnail.renderer.generate(content)
             self.field.storage.save(thumbnail.name, rendered)
+            setattr(self.instance, self.field.attname, thumbnail.name)
+
+        if save:
+            self.instance.save()
