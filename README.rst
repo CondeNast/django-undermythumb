@@ -8,6 +8,14 @@ The Django thumbnail generator with a heart of stone.
 Changelog
 ---------
 
+0.3
+~~~
+
+**Important Change**
+
+Filenames are now written with a fingerprint, similar to how ``django-katamari``
+fingers its assets.
+
 0.2.2
 ~~~~~
 
