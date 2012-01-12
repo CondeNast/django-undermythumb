@@ -15,7 +15,6 @@ class ThumbnailSet(object):
         self.instance = self.file.instance
 
         self._cache = {}
-        self._populate()
 
     def _populate(self):
         if not self._cache and self.file.name and self.instance.id:
@@ -46,6 +45,8 @@ class ThumbnailSet(object):
         self._cache = {}
 
     def __getattr__(self, name):
+        self._populate()
+
         try:
             return self._cache[name]
         except KeyError:
@@ -90,7 +91,6 @@ class ImageWithThumbnailsFieldFile(ImageFieldFile):
         for thumbnail in self.thumbnails:
             rendered = thumbnail.renderer.generate(content)
             self.field.storage.save(thumbnail.name, rendered)
-            setattr(self.instance, self.field.attname, thumbnail.name)
 
         if save:
             self.instance.save()
