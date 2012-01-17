@@ -93,22 +93,25 @@ class ResizeRenderer(BaseRenderer):
         super(ResizeRenderer, self).__init__(*args, **kwargs)
 
     def _render(self, image):
-        dw, dh = self.width, self.height
-        sw, sh = image.size
+        dst_width, dst_height = float(self.width), float(self.height)
+        src_width, src_height = map(float, image.size)
 
         if self.constrain:
-            sr = float(sw) / float(sh)
-            if sw > sh:
-                dh = dw / sr
-            else:
-                dh = dw * sr
+            scale = min(dst_width / src_width, dst_height / src_height)
+            if not self.upscale:
+                scale = min(scale, 1.0)
+            width = int(round(src_width * scale))
+            height = int(round(src_height * scale))
+        else:
+            width = dst_width
+            height = dst_height
+            if not self.upscale:
+                width = min(width, src_width)
+                hidth = min(width, src_height)
+            width = int(round(width))
+            height = int(round(height))
 
-        # resize if the source dimensions are smaller than the desired,
-        # or the user has approved scaling the image above
-        # it's original dimensions
-        if ((((dw > sw) or (dh > sh)) and self.upscale) or
-            ((dw < sw) or (dh < sh))):
-            image = image.resize((int(dw), int(dh)), Image.ANTIALIAS)
+        image = image.resize((width, height), Image.ANTIALIAS)
 
         return image
 
