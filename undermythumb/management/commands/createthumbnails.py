@@ -73,5 +73,8 @@ class Command(BaseCommand):
 
     def create_thumbnail(self, thumbnail, content):
         self.stdout.write('Creating thumbnail %s ...\n' % thumbnail.url)
-        rendered = thumbnail.renderer.generate(content)
-        thumbnail.storage.save(thumbnail.name, rendered)
+        try:
+            rendered = thumbnail.renderer.generate(content)
+            thumbnail.storage.save(thumbnail.name, rendered)
+        except Exception, exc:
+            print exc
