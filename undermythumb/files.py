@@ -17,7 +17,7 @@ class ThumbnailSet(object):
         self._cache = {}
 
     def _populate(self):
-        if not self._cache and self.file.name and self.instance.id:
+        if not self._cache and self.file.name and self.instance:
             for options in self.field.thumbnails:
                 try:
                     attname, renderer, key = options

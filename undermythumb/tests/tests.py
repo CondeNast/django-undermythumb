@@ -51,7 +51,7 @@ class UnderMyThumbTestSuite(TestCase):
         post = BlogPost.objects.get(id=post_id)
 
         # ensure the file was uploaded correctly
-        self.assertEqual(post.artwork.url, 'artwork/statler_waldorf.jpg')
+        self.assertEqual(post.artwork.url, 'artwork/b3d23ba4.jpg')
 
         # ensure that "homepage_image" falls back to the right thumbnail
         self.assertEqual(post.homepage_image.url,
@@ -79,7 +79,7 @@ class UnderMyThumbTestSuite(TestCase):
         post = BlogPost.objects.get(id=post_id)
 
         # ensure "artwork" field is unchanged
-        self.assertEqual(post.artwork.url, 'artwork/statler_waldorf.jpg')
+        self.assertEqual(post.artwork.url, 'artwork/b3d23ba4.jpg')
 
         # ensure upload was successful
         self.assertEqual(post.homepage_image.url,
