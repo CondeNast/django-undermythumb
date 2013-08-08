@@ -18,6 +18,8 @@ The Django thumbnail generation package with a heart of stone.
     author_email='dev@pitchfork.com',
     url='http://github.com/pitchfork/django-undermythumb/',
     packages=find_packages(),
+    include_package_data=True,
+    install_requires=['Django >= 1.4'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
@@ -27,4 +29,6 @@ The Django thumbnail generation package with a heart of stone.
         'Programming Language :: Python',
         'Framework :: Django',
     ],
+    test_suite='undermythumb.tests.run_tests.run_tests',
+    tests_require=['Django', 'pillow']
 )
