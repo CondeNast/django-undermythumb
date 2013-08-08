@@ -11,11 +11,12 @@ parent = os.path.realpath(os.path.join(os.path.dirname(__file__),
                                        os.path.pardir))
 sys.path.insert(0, parent)
 
-from django.test.simple import run_tests
+from django.test.simple import DjangoTestSuiteRunner
 
 
 def runtests():
-    failures = run_tests(['tests'], verbosity=1, interactive=True)
+    runner = DjangoTestSuiteRunner(verbosity=1, interactive=True)
+    failures = runner.run_tests(['tests'])
     sys.exit(failures)
 
 

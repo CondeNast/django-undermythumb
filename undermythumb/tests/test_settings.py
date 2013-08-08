@@ -3,9 +3,15 @@ INSTALLED_APPS = (
     'undermythumb.tests',
 )
 
-DATABASE_ENGINE = 'sqlite3'
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3'
+    }
+}
 
 TEST_MEDIA_ROOT = '/tmp/thumbnails-test/'
 TEST_MEDIA_CUSTOM_ROOT = '/tmp/thumbnails-test-custom/'
 
 DEFAULT_FILE_STORAGE = 'storage.FileSystemOverwriteStorage'
+
+SECRET_KEY = 'SOMEMODERATELYLONGSECRETKEY'
