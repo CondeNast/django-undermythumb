@@ -8,6 +8,12 @@ The Django thumbnail generator with a heart of stone.
 Changelog
 ---------
 
+0.3.1
+~~~
+
+Updated code for Django 1.7 support. Added `deconstruct()` and `__eq__()`
+definitions for serialization support with the new migrations feature.
+
 0.3
 ~~~
 
@@ -21,7 +27,7 @@ fingers its assets.
 
 Added initial project documentation.
 
-- Sphinx-written docs now found in ``/docs`` dir. 
+- Sphinx-written docs now found in ``/docs`` dir.
 - Cleaned up grammatical and formatting mistakes in ``renderers`` module.
 
 0.2.1

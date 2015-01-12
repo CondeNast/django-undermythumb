@@ -134,6 +134,16 @@ class ImageWithThumbnailsField(ImageField):
         args, kwargs = introspector(self)
         return (field_class, args, kwargs)
 
+    def deconstruct(self):
+        name, path, args, kwargs = super(ImageWithThumbnailsField, self).deconstruct()
+
+        if self.thumbnails is not None:
+            kwargs['thumbnails'] = self.thumbnails
+        if self.fallback_path is not None:
+            kwargs['fallback_path'] = self.fallback_path
+
+        return name, path, args, kwargs
+
 
 class ImageFallbackField(ImageField):
     """A special ``ImageField`` subclass for defining an image field
@@ -173,3 +183,14 @@ class ImageFallbackField(ImageField):
         field_class = "django.db.models.fields.files.ImageField"
         args, kwargs = introspector(self)
         return (field_class, args, kwargs)
+
+    def deconstruct(self):
+        name, path, args, kwargs = super(ImageFallbackField, self).deconstruct()
+
+        args = [self.fallback_path,] + args
+
+        del kwargs['blank']
+        del kwargs['null']
+
+        return name, path, args, kwargs
+

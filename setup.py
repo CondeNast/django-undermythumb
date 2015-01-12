@@ -9,7 +9,7 @@ f.close()
 
 setup(
     name='django-undermythumb',
-    version='0.3.0',
+    version='0.3.1',
     description="""
 The Django thumbnail generation package with a heart of stone.
     """.strip(),
