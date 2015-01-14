@@ -95,7 +95,7 @@ class CropRenderer(BaseRenderer):
 
     def deconstruct(self):
         path,args,kwargs = super(CropRenderer,self).deconstruct()
-        args = [self.width, self.height] + args
+        args = (self.width, self.height) + args
         kwargs.update({
             'bleed':self.bleed,
         })
@@ -135,8 +135,8 @@ class ResizeRenderer(BaseRenderer):
         )
 
     def deconstruct(self):
-        path,args,kwargs = super(CropRenderer,self).deconstruct()
-        args = [self.width, self.height] + args
+        path,args,kwargs = super(ResizeRenderer,self).deconstruct()
+        args = (self.width, self.height) + args
         kwargs.update({
             'constrain':self.constrain,
             'upscale':self.upscale,
@@ -199,8 +199,8 @@ class LetterboxRenderer(ResizeRenderer):
         )
 
     def deconstruct(self):
-        path,args,kwargs = super(CropRenderer, self).deconstruct()
-        args = [self.width, self.height] + args
+        path,args,kwargs = super(LetterboxRenderer, self).deconstruct()
+        args = (self.width, self.height) + args
         kwargs.update({
             'bg_color':self.bg_color,
         })
