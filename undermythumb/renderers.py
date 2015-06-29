@@ -1,5 +1,6 @@
-from cStringIO import StringIO
 import struct
+
+from cStringIO import StringIO
 
 from django.core.files.base import ContentFile
 
@@ -18,6 +19,19 @@ class BaseRenderer(object):
         self.quality = quality
         self.force_rgb = force_rgb
         self.options = kwargs
+
+        self._constructor_args = (args, kwargs)
+
+    def deconstruct(self):
+        path = '%s.%s' % (self.__class__.__module__, self.__class__.__name__)
+        args,kwargs = self._constructor_args
+        kwargs.update({
+            'format':self.format,
+            'quality':self.quality,
+            'force_rgb':self.force_rgb,
+        })
+
+        return path,args,kwargs
 
     def _normalize_format(self):
         format = self.format.upper()
@@ -70,6 +84,24 @@ class CropRenderer(BaseRenderer):
         self.bleed = float(bleed)
         super(CropRenderer, self).__init__(*args, **kwargs)
 
+    def __eq__(self, other):
+        """ Version management for migrations.
+        """
+        return (
+            self.bleed == other.bleed and
+            self.width == other.width and
+            self.height == other.height
+        )
+
+    def deconstruct(self):
+        path,args,kwargs = super(CropRenderer,self).deconstruct()
+        args = (self.width, self.height) + args
+        kwargs.update({
+            'bleed':self.bleed,
+        })
+
+        return path,args,kwargs
+
     def _render(self, image):
         return ImageOps.fit(image, (self.width, self.height),
                             Image.ANTIALIAS, self.bleed, (0.5, 0.5))
@@ -91,6 +123,26 @@ class ResizeRenderer(BaseRenderer):
         self.upscale = upscale
 
         super(ResizeRenderer, self).__init__(*args, **kwargs)
+
+    def __eq__(self, other):
+        """ Version management for migrations.
+        """
+        return (
+            self.constrain == other.constrain and
+            self.width == other.width and
+            self.height == other.height and
+            self.upscale == other.upscale
+        )
+
+    def deconstruct(self):
+        path,args,kwargs = super(ResizeRenderer,self).deconstruct()
+        args = (self.width, self.height) + args
+        kwargs.update({
+            'constrain':self.constrain,
+            'upscale':self.upscale,
+        })
+
+        return path,args,kwargs
 
     def _render(self, image):
         dst_width, dst_height = float(self.width), float(self.height)
@@ -136,6 +188,24 @@ class LetterboxRenderer(ResizeRenderer):
         bg_color = bg_color.strip('#')
         bg_hex = bg_color.decode('hex')
         self.bg_color = struct.unpack('BBB', bg_hex) + (0, )
+
+    def __eq__(self, other):
+        """ Version management for migrations.
+        """
+        return (
+            self.bg_color == other.bg_color and
+            self.width == other.width and
+            self.height == other.height
+        )
+
+    def deconstruct(self):
+        path,args,kwargs = super(LetterboxRenderer, self).deconstruct()
+        args = (self.width, self.height) + args
+        kwargs.update({
+            'bg_color':self.bg_color,
+        })
+
+        return path,args,kwargs
 
     def _render(self, image):
         image = super(LetterboxRenderer, self)._render(image)
