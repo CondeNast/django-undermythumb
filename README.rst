@@ -9,7 +9,7 @@ Changelog
 ---------
 
 0.3.1
-~~~
+~~~~~
 
 Updated code for Django 1.7 support. Added `deconstruct()` and `__eq__()`
 definitions for serialization support with the new migrations feature.
