@@ -1,4 +1,7 @@
 🚨 django-undermythumb is no longer an active project. 🚨
+=============
+
+---------
 
 Under My Thumb
 ==============
